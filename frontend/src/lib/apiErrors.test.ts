@@ -44,6 +44,12 @@ describe('getFriendlyApiMessage', () => {
     );
   });
 
+  it('Network Error (Axios sem response) → guia deploy/CORS', () => {
+    const msg = getFriendlyApiMessage(axErr({ message: 'Network Error' }));
+    expect(msg).toContain('VITE_API_URL');
+    expect(msg).toContain('FRONTEND_URL');
+  });
+
   it('ECONNABORTED (sem message para não cair no ramo genérico)', () => {
     expect(
       getFriendlyApiMessage(axErr({ code: 'ECONNABORTED', message: undefined })),

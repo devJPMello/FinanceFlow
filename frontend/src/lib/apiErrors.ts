@@ -8,6 +8,23 @@ export function getFriendlyApiMessage(error: unknown): string {
   }>;
   const status = ax.response?.status;
   const body = ax.response?.data;
+
+  // Sem resposta HTTP: CORS, URL errada, API offline, mixed content. Axios ainda mete message "Network Error".
+  if (!ax.response) {
+    const code = ax.code;
+    if (code === 'ECONNABORTED') {
+      return 'O pedido demorou demasiado. Tente novamente.';
+    }
+    if (code === 'ERR_NETWORK' || ax.message === 'Network Error') {
+      return (
+        'Não foi possível contactar a API (rede/CORS). Confirme no Render: (1) Static Site → VITE_API_URL = URL https da API sem /api; ' +
+        'novo deploy do front. (2) API → FRONTEND_URL = URL exata do site (https://…, sem barra no fim). ' +
+        'No Clerk, adicione o domínio do front. Abra F12 → Rede para ver o pedido bloqueado.'
+      );
+    }
+    return 'Sem ligação ao servidor. Verifique a rede e tente de novo.';
+  }
+
   const raw = body?.message ?? ax.message;
 
   if (raw) {
@@ -21,13 +38,6 @@ export function getFriendlyApiMessage(error: unknown): string {
       }
       return raw;
     }
-  }
-
-  if (ax.code === 'ECONNABORTED') {
-    return 'O pedido demorou demasiado. Tente novamente.';
-  }
-  if (!ax.response) {
-    return 'Sem ligação ao servidor. Verifique a rede e tente de novo.';
   }
 
   switch (status) {

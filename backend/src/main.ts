@@ -59,8 +59,12 @@ async function bootstrap() {
   });
 
   // CORS: URL do static no Render (ou localhost). Vários hosts: separar por vírgula.
+  // O browser envia Origin sem barra final; normalizar evita falha se FRONTEND_URL tiver "/" no fim.
   const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
-  const allowedOrigins = corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+  const allowedOrigins = corsOrigin
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
   const corsValue =
     allowedOrigins.length === 0
       ? 'http://localhost:5173'
