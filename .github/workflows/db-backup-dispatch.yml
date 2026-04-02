@@ -1,0 +1,29 @@
+# Backup manual da base (GitHub Actions). Configure o secret DATABASE_URL no repositório.
+# Requer PostgreSQL acessível a partir dos runners GitHub (ou use self-hosted runner na VPC).
+name: DB backup (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Executar pg_dump via script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BACKUP_RETENTION_COUNT: '7'
+        working-directory: backend
+        run: node ./scripts/backup-db.mjs
+      - name: Artefacto (opcional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sql-backup-snippet
+          path: backend/backups/*.sql
+          if-no-files-found: warn
