@@ -211,21 +211,13 @@ export default function Categories() {
       <div>
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Categorias</h1>
         <p className="text-gray-600 text-lg">Organize receitas e despesas</p>
-        <button
-          type="button"
-          onClick={() => openNewCategory()}
-          className="btn-secondary text-sm py-2.5 px-4 flex items-center gap-2 mt-4"
-        >
-          <Plus className="w-4 h-4" />
-          Nova categoria
-        </button>
       </div>
 
       <div className="card-gradient">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-xl">
-              <Filter className="w-5 h-5 text-[#16A34A]" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-indigo-50 rounded-lg shrink-0 border border-indigo-100/80">
+              <Filter className="w-5 h-5 text-indigo-600" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Filtros</h2>
@@ -236,16 +228,16 @@ export default function Categories() {
             <button
               type="button"
               onClick={clearFilters}
-              className="btn-secondary text-sm py-2.5 px-4 flex items-center gap-2 w-fit"
+              className="btn-secondary text-sm py-2.5 px-4 flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 shrink-0" />
               Limpar
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_11rem] gap-4 items-end">
-          <div className="min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+          <div className="min-w-0 flex-1">
             <label
               htmlFor="categories-search"
               className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"
@@ -277,7 +269,7 @@ export default function Categories() {
               ) : null}
             </div>
           </div>
-          <div className="min-w-0 sm:max-w-[11rem] sm:justify-self-stretch">
+          <div className="min-w-0 w-full sm:w-[12.5rem] sm:shrink-0">
             <label
               htmlFor="categories-filter-type"
               className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"
@@ -301,14 +293,14 @@ export default function Categories() {
       <div className="card-gradient">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-xl">
-              <TrendingUp className="w-5 h-5 text-[#16A34A]" />
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 border border-amber-200/80 shrink-0">
+              <TrendingUp className="w-5 h-5 text-amber-700" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Previsão de despesas</h2>
               <p className="text-sm text-gray-600">
                 Média dos últimos 3 meses.{' '}
-                <Link to="/transactions" className="text-[#16A34A] font-semibold hover:underline">
+                <Link to="/transactions" className="text-indigo-600 font-semibold hover:text-indigo-800 hover:underline">
                   Ver transações
                 </Link>
               </p>
@@ -332,7 +324,7 @@ export default function Categories() {
 
         {forecastLoading ? (
           <div className="flex items-center gap-3 text-gray-500 text-sm py-6">
-            <Loader2 className="w-5 h-5 animate-spin text-[#16A34A]" />
+            <Loader2 className="w-5 h-5 animate-spin text-amber-700" />
             A calcular previsão…
           </div>
         ) : forecast.length === 0 ? (
@@ -340,7 +332,7 @@ export default function Categories() {
             <p className="text-sm text-gray-600 mb-1">Sem despesas recentes para projetar.</p>
             <p className="text-sm text-gray-500">
               Registe movimentos ou importe extrato em{' '}
-              <Link to="/transactions" className="font-semibold text-[#16A34A] hover:underline">
+              <Link to="/transactions" className="text-indigo-600 font-semibold hover:text-indigo-800 hover:underline">
                 Transações
               </Link>
               .
@@ -428,9 +420,9 @@ export default function Categories() {
 
       {showIncomeSection && (
         <div className="card-gradient">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-xl">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-green-100 rounded-xl shrink-0">
                 <TrendingUp className="w-5 h-5 text-[#16A34A]" />
               </div>
               <div>
@@ -441,6 +433,14 @@ export default function Categories() {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => openNewCategory(TransactionType.INCOME)}
+              className="btn-secondary text-sm py-2.5 px-4 shrink-0 flex items-center justify-center gap-2 w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              Nova categoria
+            </button>
           </div>
           {loading ? (
             <CategoryTilesSkeleton />
@@ -476,9 +476,9 @@ export default function Categories() {
 
       {showExpenseSection && (
         <div className="card-gradient">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-xl">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-red-100 rounded-xl shrink-0">
                 <TrendingDown className="w-5 h-5 text-[#EF4444]" />
               </div>
               <div>
@@ -489,6 +489,14 @@ export default function Categories() {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => openNewCategory(TransactionType.EXPENSE)}
+              className="btn-secondary text-sm py-2.5 px-4 shrink-0 flex items-center justify-center gap-2 w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              Nova categoria
+            </button>
           </div>
           {loading ? (
             <CategoryTilesSkeleton />

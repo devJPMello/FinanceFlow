@@ -86,8 +86,8 @@ export default function Goals() {
       {/* Filtros */}
       <div className="card-gradient">
         <div className="flex items-center mb-4">
-          <div className="p-2 bg-green-100 rounded-lg mr-3">
-            <Filter className="w-5 h-5 text-[#16A34A]" />
+          <div className="p-2 bg-indigo-50 rounded-lg mr-3 border border-indigo-100/80">
+            <Filter className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-gray-900">Filtros</h2>
