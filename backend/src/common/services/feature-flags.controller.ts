@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClerkAuthGuard } from '../../auth/clerk-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { UserPayload } from '../interfaces/user.interface';
@@ -15,6 +25,7 @@ export class FeatureFlagsController {
   constructor(
     private readonly flags: FeatureFlagsService,
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
   @Get(':key')
@@ -26,10 +37,20 @@ export class FeatureFlagsController {
 
   @Post(':key')
   @ApiOperation({ summary: 'Criar/atualizar flag (uso administrativo)' })
+  @ApiHeader({
+    name: 'x-admin-operations-secret',
+    description: 'Deve coincidir com ADMIN_OPERATIONS_SECRET no servidor',
+    required: true,
+  })
   async upsertFlag(
+    @Headers('x-admin-operations-secret') adminSecret: string | undefined,
     @Param('key') key: string,
     @Body() body: { enabled?: boolean; rolloutPct?: number; description?: string },
   ) {
+    const expected = this.config.get<string>('ADMIN_OPERATIONS_SECRET')?.trim();
+    if (!expected || (adminSecret || '').trim() !== expected) {
+      throw new ForbiddenException('Operação administrativa negada');
+    }
     await this.prisma.$executeRawUnsafe(
       `INSERT INTO feature_flags ("id","key","enabled","rolloutPct","description","createdAt","updatedAt")
        VALUES ($1,$2,$3,$4,$5,NOW(),NOW())

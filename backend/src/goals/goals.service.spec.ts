@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { GoalsService } from './goals.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -13,7 +13,7 @@ describe('GoalsService', () => {
     goal: {
       create: jest.fn(),
       findMany: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
@@ -170,7 +170,7 @@ describe('GoalsService', () => {
         deadline: new Date(),
       };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(mockGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(mockGoal);
 
       const result = await service.findOne(userId, goalId);
 
@@ -181,29 +181,21 @@ describe('GoalsService', () => {
       const userId = 'user-1';
       const goalId = 'non-existent';
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(null);
+      mockPrismaService.goal.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne(userId, goalId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('deve lançar ForbiddenException se meta pertence a outro usuário', async () => {
+    it('deve lançar NotFoundException se meta pertence a outro usuário (sem vazar existência)', async () => {
       const userId = 'user-1';
       const goalId = 'goal-1';
-      const mockGoal = {
-        id: goalId,
-        title: 'Test Goal',
-        userId: 'other-user',
-        targetAmount: new Decimal(1000),
-        currentAmount: new Decimal(500),
-        deadline: new Date(),
-      };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(mockGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne(userId, goalId)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
   });
@@ -227,7 +219,7 @@ describe('GoalsService', () => {
       const updateDto = { title: 'Updated Goal' };
       const updatedGoal = { ...existingGoal, ...updateDto };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(existingGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(existingGoal);
       mockPrismaService.goal.update.mockResolvedValue(updatedGoal);
 
       const result = await service.update(userId, goalId, updateDto);
@@ -252,7 +244,7 @@ describe('GoalsService', () => {
 
       const updateDto = { deadline: pastDate.toISOString() };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(existingGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(existingGoal);
 
       await expect(service.update(userId, goalId, updateDto)).rejects.toThrow(
         BadRequestException,
@@ -274,7 +266,7 @@ describe('GoalsService', () => {
 
       const updateDto = { targetAmount: -100 };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(existingGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(existingGoal);
 
       await expect(service.update(userId, goalId, updateDto)).rejects.toThrow(
         BadRequestException,
@@ -301,7 +293,7 @@ describe('GoalsService', () => {
         currentAmount: new Decimal(600),
       };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(existingGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(existingGoal);
       mockPrismaService.goal.update.mockResolvedValue(updatedGoal);
 
       const result = await service.updateProgress(userId, goalId, 100);
@@ -327,7 +319,7 @@ describe('GoalsService', () => {
         currentAmount: new Decimal(1000), // Não excede o target
       };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(existingGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(existingGoal);
       mockPrismaService.goal.update.mockResolvedValue(updatedGoal);
 
       const result = await service.updateProgress(userId, goalId, 200);
@@ -350,7 +342,7 @@ describe('GoalsService', () => {
         deadline: new Date(),
       };
 
-      mockPrismaService.goal.findUnique.mockResolvedValue(existingGoal);
+      mockPrismaService.goal.findFirst.mockResolvedValue(existingGoal);
       mockPrismaService.goal.delete.mockResolvedValue(existingGoal);
 
       const result = await service.remove(userId, goalId);

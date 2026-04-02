@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
@@ -83,16 +82,12 @@ export class GoalsService {
   }
 
   async findOne(userId: string, id: string) {
-    const goal = await this.prisma.goal.findUnique({
-      where: { id },
+    const goal = await this.prisma.goal.findFirst({
+      where: { id, userId },
     });
 
     if (!goal) {
       throw new NotFoundException('Meta não encontrada');
-    }
-
-    if (goal.userId !== userId) {
-      throw new ForbiddenException('Acesso negado');
     }
 
     return goal;

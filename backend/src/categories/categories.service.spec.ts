@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../common/services/audit.service';
@@ -13,7 +13,7 @@ describe('CategoriesService', () => {
     category: {
       create: jest.fn(),
       findMany: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
@@ -181,7 +181,7 @@ describe('CategoriesService', () => {
         _count: { transactions: 0 },
       };
 
-      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.category.findFirst.mockResolvedValue(mockCategory);
 
       const result = await service.findOne(userId, categoryId);
 
@@ -192,28 +192,21 @@ describe('CategoriesService', () => {
       const userId = 'user-1';
       const categoryId = 'non-existent';
 
-      mockPrismaService.category.findUnique.mockResolvedValue(null);
+      mockPrismaService.category.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne(userId, categoryId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('deve lançar ForbiddenException se categoria pertence a outro usuário', async () => {
+    it('deve lançar NotFoundException se categoria pertence a outro usuário (sem vazar existência)', async () => {
       const userId = 'user-1';
       const categoryId = 'category-1';
-      const mockCategory = {
-        id: categoryId,
-        name: 'Test Category',
-        userId: 'other-user',
-        type: 'INCOME',
-        _count: { transactions: 0 },
-      };
 
-      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.category.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne(userId, categoryId)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
   });
@@ -237,7 +230,7 @@ describe('CategoriesService', () => {
         ...updateDto,
       };
 
-      mockPrismaService.category.findUnique.mockResolvedValue(existingCategory);
+      mockPrismaService.category.findFirst.mockResolvedValue(existingCategory);
       mockPrismaService.category.update.mockResolvedValue(updatedCategory);
 
       const result = await service.update(userId, categoryId, updateDto);
@@ -260,7 +253,7 @@ describe('CategoriesService', () => {
         _count: { transactions: 0 },
       };
 
-      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.category.findFirst.mockResolvedValue(mockCategory);
       mockPrismaService.category.delete.mockResolvedValue(mockCategory);
 
       const result = await service.remove(userId, categoryId);
@@ -281,7 +274,7 @@ describe('CategoriesService', () => {
         _count: { transactions: 5 },
       };
 
-      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.category.findFirst.mockResolvedValue(mockCategory);
 
       await expect(service.remove(userId, categoryId)).rejects.toThrow(
         BadRequestException,

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { TransactionsService } from './transactions.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -37,7 +37,7 @@ describe('TransactionsService', () => {
     transaction: {
       create: jest.fn(),
       findMany: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       aggregate: jest.fn(),
@@ -224,7 +224,7 @@ describe('TransactionsService', () => {
         category: { id: 'category-1', name: 'Test Category' },
       };
 
-      mockPrismaService.transaction.findUnique.mockResolvedValue(mockTransaction);
+      mockPrismaService.transaction.findFirst.mockResolvedValue(mockTransaction);
 
       const result = await service.findOne(userId, transactionId);
 
@@ -235,29 +235,21 @@ describe('TransactionsService', () => {
       const userId = 'user-1';
       const transactionId = 'non-existent';
 
-      mockPrismaService.transaction.findUnique.mockResolvedValue(null);
+      mockPrismaService.transaction.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne(userId, transactionId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('deve lançar ForbiddenException se transação pertence a outro usuário', async () => {
+    it('deve lançar NotFoundException se transação pertence a outro usuário (sem vazar existência)', async () => {
       const userId = 'user-1';
       const transactionId = 'transaction-1';
 
-      const mockTransaction = {
-        id: transactionId,
-        userId: 'other-user',
-        type: 'INCOME',
-        amount: new Decimal(1000),
-        category: { id: 'category-1', name: 'Test Category' },
-      };
-
-      mockPrismaService.transaction.findUnique.mockResolvedValue(mockTransaction);
+      mockPrismaService.transaction.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne(userId, transactionId)).rejects.toThrow(
-        ForbiddenException,
+        NotFoundException,
       );
     });
   });
@@ -281,7 +273,7 @@ describe('TransactionsService', () => {
         amount: new Decimal(updateDto.amount),
       };
 
-      mockPrismaService.transaction.findUnique.mockResolvedValue(existingTransaction);
+      mockPrismaService.transaction.findFirst.mockResolvedValue(existingTransaction);
       mockPrismaService.transaction.update.mockResolvedValue(updatedTransaction);
 
       const result = await service.update(userId, transactionId, updateDto);
@@ -302,7 +294,7 @@ describe('TransactionsService', () => {
         category: { id: 'category-1', type: 'INCOME', userId },
       };
 
-      mockPrismaService.transaction.findUnique.mockResolvedValue(existingTransaction);
+      mockPrismaService.transaction.findFirst.mockResolvedValue(existingTransaction);
 
       await expect(service.update(userId, transactionId, updateDto)).rejects.toThrow(
         BadRequestException,
@@ -323,7 +315,7 @@ describe('TransactionsService', () => {
         category: { id: 'category-1', name: 'Test Category' },
       };
 
-      mockPrismaService.transaction.findUnique.mockResolvedValue(existingTransaction);
+      mockPrismaService.transaction.findFirst.mockResolvedValue(existingTransaction);
       mockPrismaService.transaction.delete.mockResolvedValue(existingTransaction);
 
       const result = await service.remove(userId, transactionId);
@@ -346,7 +338,7 @@ describe('TransactionsService', () => {
     };
 
     beforeEach(() => {
-      mockPrismaService.transaction.findUnique.mockResolvedValue({
+      mockPrismaService.transaction.findFirst.mockResolvedValue({
         id: txId,
         userId,
         type: 'EXPENSE',

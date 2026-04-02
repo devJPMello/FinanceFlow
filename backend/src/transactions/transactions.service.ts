@@ -208,8 +208,8 @@ export class TransactionsService {
   }
 
   async findOne(userId: string, id: string) {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { id },
+    const transaction = await this.prisma.transaction.findFirst({
+      where: { id, userId },
       include: {
         category: true,
         _count: { select: { attachments: true } },
@@ -218,10 +218,6 @@ export class TransactionsService {
 
     if (!transaction) {
       throw new NotFoundException('Transação não encontrada');
-    }
-
-    if (transaction.userId !== userId) {
-      throw new ForbiddenException('Acesso negado');
     }
 
     return transaction;
@@ -498,6 +494,7 @@ export class TransactionsService {
     const effectiveMime = this.resolveImportMime(buffer, mimetype, originalName);
     try {
       const rows = await this.aiInsights.extractBankTransactionsFromMedia(
+        userId,
         buffer,
         effectiveMime,
         originalName,
@@ -599,6 +596,7 @@ export class TransactionsService {
   ) {
     const effectiveMime = this.resolveImportMime(buffer, mimetype, originalName);
     const rows = await this.aiInsights.extractBankTransactionsFromMedia(
+      userId,
       buffer,
       effectiveMime,
       originalName,

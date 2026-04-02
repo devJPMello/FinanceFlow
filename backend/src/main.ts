@@ -6,8 +6,10 @@ import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
 import { MetricsService } from './common/services/metrics.service';
+import { assertProductionEnv } from './common/config/production-env';
 
 async function bootstrap() {
+  assertProductionEnv();
   const logger = new Logger('Bootstrap');
   
   const app = await NestFactory.create(AppModule, {
@@ -85,38 +87,46 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger/OpenAPI Configuration
-  const config = new DocumentBuilder()
-    .setTitle('FinanceFlow API')
-    .setDescription('API REST para plataforma de gestão financeira pessoal')
-    .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'Clerk',
-        description: 'Token de sessão do Clerk (header Authorization)',
-        in: 'header',
-      },
-      'JWT-auth',
-    )
-    .addTag('users', 'Gerenciamento de usuários')
-    .addTag('transactions', 'Transações financeiras')
-    .addTag('categories', 'Categorias de transações')
-    .addTag('goals', 'Metas financeiras')
-    .addTag('dashboard', 'Dashboard e relatórios')
-    .addTag('tax-insights', 'TaxVision — visão fiscal e deduções')
-    .addTag('ai-insights', 'Comentários com IA (Gemini)')
-    .addTag('health', 'Health check e monitoramento')
-    .build();
+  const enableSwagger =
+    process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER_IN_PROD === 'true';
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+  if (enableSwagger) {
+    const config = new DocumentBuilder()
+      .setTitle('FinanceFlow API')
+      .setDescription('API REST para plataforma de gestão financeira pessoal')
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'Clerk',
+          description: 'Token de sessão do Clerk (header Authorization)',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addTag('users', 'Gerenciamento de usuários')
+      .addTag('transactions', 'Transações financeiras')
+      .addTag('categories', 'Categorias de transações')
+      .addTag('goals', 'Metas financeiras')
+      .addTag('dashboard', 'Dashboard e relatórios')
+      .addTag('tax-insights', 'TaxVision — visão fiscal e deduções')
+      .addTag('ai-insights', 'Comentários com IA (Gemini)')
+      .addTag('health', 'Health check e monitoramento')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+  } else {
+    logger.log(
+      'Swagger desativado em produção (ENABLE_SWAGGER_IN_PROD=true para expor /api/docs)',
+    );
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

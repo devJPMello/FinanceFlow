@@ -16,6 +16,11 @@ import { CategoriesService } from '../categories/categories.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TaxInsightsService } from '../tax-insights/tax-insights.service';
 import { AuditService } from '../common/services/audit.service';
+import {
+  IMPORT_MAX_FILE_BYTES,
+  ASYNC_JOB_PDF_MAX_BYTES,
+  ATTACHMENT_MAX_FILE_BYTES,
+} from '../common/constants/upload-limits';
 
 export interface AiInsightResult {
   text: string;
@@ -393,8 +398,10 @@ export class AiInsightsService {
 
   /**
    * PDF, imagem (JPEG/PNG/WebP/GIF) ou CSV (texto) via Gemini.
+   * Respeita quotas diárias / burst (AI_DAILY_LIMIT_PER_USER, AI_BURST_PER_MINUTE_PER_ROUTE).
    */
   async extractBankTransactionsFromMedia(
+    userId: string,
     buffer: Buffer,
     mimeType: string,
     originalName: string,
@@ -403,9 +410,16 @@ export class AiInsightsService {
       throw new BadRequestException('Ficheiro vazio');
     }
 
+    const routeKey = 'transactions.import_ai_media';
+    await this.checkQuotaOrThrow(userId, routeKey);
+
     const mime = (mimeType || '').toLowerCase();
     const name = (originalName || '').toLowerCase();
-    const { model } = this.getGeminiModelForPdfStatement();
+    const { model, modelName } = this.getGeminiModelForPdfStatement();
+
+    const maxCsv = Math.min(5 * 1024 * 1024, IMPORT_MAX_FILE_BYTES);
+    const maxPdf = Math.min(ASYNC_JOB_PDF_MAX_BYTES, IMPORT_MAX_FILE_BYTES);
+    const maxImg = Math.min(8 * 1024 * 1024, ATTACHMENT_MAX_FILE_BYTES);
 
     const isCsv =
       mime === 'text/csv' ||
@@ -414,9 +428,10 @@ export class AiInsightsService {
       (mime === 'application/vnd.ms-excel' && name.endsWith('.csv'));
 
     if (isCsv) {
-      const maxCsv = 5 * 1024 * 1024;
       if (buffer.length > maxCsv) {
-        throw new BadRequestException('CSV demasiado grande (máx. 5 MB)');
+        throw new BadRequestException(
+          `CSV demasiado grande (máx. ${Math.round(maxCsv / (1024 * 1024))} MB)`,
+        );
       }
       const text = buffer.toString('utf-8');
       const maxChars = 400_000;
@@ -431,7 +446,9 @@ export class AiInsightsService {
         if (!raw) {
           throw new Error('Resposta vazia do modelo');
         }
-        return this.parseGeminiJsonMovementArray(raw);
+        const rows = this.parseGeminiJsonMovementArray(raw);
+        await this.trackAiUsage(userId, routeKey, modelName, `csv:${slice.length}`, raw);
+        return rows;
       } catch (err) {
         if (err instanceof HttpException) {
           throw err;
@@ -444,9 +461,10 @@ export class AiInsightsService {
     }
 
     if (mime === 'application/pdf' || name.endsWith('.pdf')) {
-      const maxPdf = 12 * 1024 * 1024;
       if (buffer.length > maxPdf) {
-        throw new BadRequestException('PDF demasiado grande (máx. 12 MB)');
+        throw new BadRequestException(
+          `PDF demasiado grande (máx. ${Math.round(maxPdf / (1024 * 1024))} MB)`,
+        );
       }
       const base64 = buffer.toString('base64');
       try {
@@ -463,7 +481,9 @@ export class AiInsightsService {
         if (!raw) {
           throw new Error('Resposta vazia do modelo');
         }
-        return this.parseGeminiJsonMovementArray(raw);
+        const rows = this.parseGeminiJsonMovementArray(raw);
+        await this.trackAiUsage(userId, routeKey, modelName, 'pdf:extract', raw);
+        return rows;
       } catch (err) {
         if (err instanceof HttpException) {
           throw err;
@@ -478,9 +498,10 @@ export class AiInsightsService {
     const allowedImages = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     const imageMime = allowedImages.includes(mime) ? mime : null;
     if (imageMime) {
-      const maxImg = 8 * 1024 * 1024;
       if (buffer.length > maxImg) {
-        throw new BadRequestException('Imagem demasiado grande (máx. 8 MB)');
+        throw new BadRequestException(
+          `Imagem demasiado grande (máx. ${Math.round(maxImg / (1024 * 1024))} MB)`,
+        );
       }
       try {
         const result = await model.generateContent([
@@ -496,7 +517,9 @@ export class AiInsightsService {
         if (!raw) {
           throw new Error('Resposta vazia do modelo');
         }
-        return this.parseGeminiJsonMovementArray(raw);
+        const rows = this.parseGeminiJsonMovementArray(raw);
+        await this.trackAiUsage(userId, routeKey, modelName, `image:${imageMime}`, raw);
+        return rows;
       } catch (err) {
         if (err instanceof HttpException) {
           throw err;
@@ -1126,13 +1149,17 @@ export class AiInsightsService {
       throw new BadRequestException('OCR suportado apenas para PDF ou imagem');
     }
 
-    const { model } = this.getGeminiModelForPdfStatement();
+    const routeKey = 'taxvision.ocr_attachment';
+    await this.checkQuotaOrThrow(userId, routeKey);
+
+    const { model, modelName } = this.getGeminiModelForPdfStatement();
     const raw = await model.generateContent([
       { inlineData: { mimeType, data: buffer.toString('base64') } },
       { text: RECEIPT_OCR_PROMPT },
     ]);
     const text = raw.response.text()?.trim();
     if (!text) throw new BadGatewayException('OCR sem resposta do modelo');
+    await this.trackAiUsage(userId, routeKey, modelName, RECEIPT_OCR_PROMPT.slice(0, 2000), text);
 
     let ocr: OcrReceiptData;
     try {

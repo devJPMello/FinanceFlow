@@ -32,6 +32,8 @@ services:
         sync: false
       - key: ATTACHMENT_URL_SECRET
         sync: false
+      - key: ADMIN_OPERATIONS_SECRET
+        sync: false
       - key: DISABLE_JOB_POLLER
         value: "true"
       - key: THROTTLE_LIMIT

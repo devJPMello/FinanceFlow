@@ -118,8 +118,17 @@ Resumo; o detalhe está em **`backend/.env.example`** e **`frontend/.env.example
 
 | Onde | Variáveis importantes |
 |------|------------------------|
-| Backend | `DATABASE_URL`, `CLERK_SECRET_KEY`, `FRONTEND_URL`, `GEMINI_API_KEY` (IA), `SENTRY_DSN`, `DISABLE_JOB_POLLER` |
+| Backend | `DATABASE_URL`, `CLERK_SECRET_KEY`, `FRONTEND_URL`, `GEMINI_API_KEY` (IA), `ADMIN_OPERATIONS_SECRET` (flags), `SENTRY_DSN`, `DISABLE_JOB_POLLER` |
 | Frontend | `VITE_API_URL`, `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_SENTRY_DSN` (opcional) |
+
+### Segurança em produção (resumo)
+
+- **Arranque:** com `NODE_ENV=production`, a API exige `DATABASE_URL` e `CLERK_SECRET_KEY` (falha cedo se faltarem).
+- **Swagger:** `/api/docs` fica **desligado** em produção; define `ENABLE_SWAGGER_IN_PROD=true` só se precisares expor a documentação.
+- **Feature flags (admin):** `POST /api/feature-flags/:key` exige header `x-admin-operations-secret` igual a `ADMIN_OPERATIONS_SECRET` (gera um segredo longo no painel do host).
+- **IA / custos:** importação de extratos (CSV/PDF/imagem) e OCR TaxVision passam pelas mesmas quotas que o resto (`AI_DAILY_LIMIT_PER_USER`, `AI_BURST_PER_MINUTE_PER_ROUTE`). Limites de tamanho alinham-se a `IMPORT_MAX_FILE_BYTES` / anexos (ver `backend/.env.example`).
+- **Isolamento:** leituras por id usam `userId` na query onde faz sentido; IDs de outros utilizadores respondem **404** (sem revelar que o recurso existe).
+- **`npm audit`:** parte dos avisos vem da cadeia de **dev** (`@nestjs/cli`, eslint); corrigir tudo costuma exigir upgrades major — rever periodicamente.
 
 ---
 
@@ -151,7 +160,7 @@ Há um **Blueprint** na raiz: [`render.yaml`](./render.yaml) — PostgreSQL (Fra
 1. Repositório no GitHub com `package-lock.json` **commitado** em `backend/` e `frontend/` (necessário para `npm install` estável).
 2. No [Render](https://render.com): **New → Blueprint** → apontar para o repo → aplicar. Ajustar `branch` no `render.yaml` se não usares `main`.
 3. No painel do Render, preencher variáveis **sync: false**:
-   - **API (`financeflow-api`):** `FRONTEND_URL` = URL pública do static (ex. `https://financeflow-web.onrender.com`), `CLERK_SECRET_KEY`, `ATTACHMENT_URL_SECRET`, `GEMINI_API_KEY` (opcional mas recomendado para IA), `SENTRY_DSN` (opcional).
+   - **API (`financeflow-api`):** `FRONTEND_URL` = URL pública do static (ex. `https://financeflow-web.onrender.com`), `CLERK_SECRET_KEY`, `ATTACHMENT_URL_SECRET`, `ADMIN_OPERATIONS_SECRET` (se usares POST de feature-flags), `GEMINI_API_KEY` (opcional mas recomendado para IA), `SENTRY_DSN` (opcional).
    - **Static (`financeflow-web`):** `VITE_API_URL` = URL da API **sem** `/api` no fim (ex. `https://financeflow-api.onrender.com`), `VITE_CLERK_PUBLISHABLE_KEY` = chave **live** do Clerk.
 4. Depois da API estar no ar, **atualiza** `VITE_API_URL` no static (se ainda não tinhas a URL) e faz **Manual Deploy** do front — o Vite embute as env no build.
 5. **Clerk:** Domínios permitidos + redirect URLs para o URL do static e (se necessário) da API.

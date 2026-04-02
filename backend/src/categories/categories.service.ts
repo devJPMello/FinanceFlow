@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -75,8 +74,8 @@ export class CategoriesService {
   }
 
   async findOne(userId: string, id: string) {
-    const category = await this.prisma.category.findUnique({
-      where: { id },
+    const category = await this.prisma.category.findFirst({
+      where: { id, userId },
       include: {
         _count: {
           select: { transactions: true },
@@ -86,10 +85,6 @@ export class CategoriesService {
 
     if (!category) {
       throw new NotFoundException('Categoria não encontrada');
-    }
-
-    if (category.userId !== userId) {
-      throw new ForbiddenException('Acesso negado');
     }
 
     return category;
@@ -210,12 +205,12 @@ export class CategoriesService {
   }
 
   async upsertMonthlyBudget(userId: string, dto: UpsertCategoryBudgetDto) {
-    const category = await this.prisma.category.findUnique({
-      where: { id: dto.categoryId },
+    const category = await this.prisma.category.findFirst({
+      where: { id: dto.categoryId, userId },
       select: { id: true, userId: true, type: true },
     });
 
-    if (!category || category.userId !== userId) {
+    if (!category) {
       throw new NotFoundException('Categoria não encontrada');
     }
 
