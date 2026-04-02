@@ -1,173 +1,190 @@
-# FinanceFlow 💰
+# FinanceFlow
 
-Plataforma profissional de gestão financeira pessoal desenvolvida com arquitetura moderna e boas práticas de mercado.
+Aplicação full stack de **gestão financeira pessoal** com visão **fiscal (TaxVision)**, **importação assistida por IA** (extratos CSV/PDF/imagem), **anexos** por lançamento e **dashboard** com orçamentos, metas e fechamento mensal. Projeto pensado para **portfolio**: código organizado, preocupação com produção (health checks, observabilidade, backups) e testes.
 
-## 🏗️ Arquitetura
+---
 
-### Backend
-- **Framework**: NestJS
-- **ORM**: Prisma
-- **Banco de Dados**: PostgreSQL (NeonDB)
-- **Autenticação**: JWT
-- **Validação**: class-validator
+## Destaques
 
-### Frontend
-- **Framework**: React 18
-- **Linguagem**: TypeScript
-- **Estilização**: Tailwind CSS
-- **Gerenciamento de Estado**: Zustand
-- **Gráficos**: Recharts
+| Área | O quê |
+|------|--------|
+| **Auth** | [Clerk](https://clerk.com) (sessão no front, validação no backend) |
+| **Domínio** | Transações, categorias, metas, orçamentos mensais, duplicatas, pacote contador |
+| **TaxVision** | Marcadores IR, checklist, timeline, sugestões com IA (Gemini) |
+| **Importação** | Pré-visualização, confirmação em lote, jobs assíncronos opcionais |
+| **Operação** | `GET /api/health/live`, `/ready`, `/jobs`; Sentry opcional; scripts de backup |
 
-## 📁 Estrutura do Projeto
+---
 
+## Stack
+
+**Backend:** NestJS · Prisma · PostgreSQL · Swagger em `/api/docs`  
+**Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · React Router · Recharts · React Hook Form + Zod  
+
+**Integrações:** Clerk · Google Gemini (IA) · Sentry (opcional)
+
+---
+
+## Arquitetura (visão geral)
+
+```text
+┌─────────────┐     HTTPS      ┌──────────────┐     SQL      ┌────────────┐
+│  React SPA  │ ─────────────► │  NestJS API  │ ───────────► │ PostgreSQL │
+│  (Vite)     │   Bearer JWT   │  /api/*      │              │            │
+└─────────────┘   (Clerk)      └──────┬───────┘              └────────────┘
+                                      │
+                              ficheiros / fila
+                                      ▼
+                              uploads + worker (opcional)
 ```
+
+- A API usa prefixo **`/api`**. O frontend chama `VITE_API_URL` **sem** o sufixo `/api` (configurado em `src/lib/api.ts`).
+- Jobs pesados podem correr num processo **`npm run start:worker`** com `DISABLE_JOB_POLLER=true` na API.
+
+---
+
+## Estrutura do repositório
+
+```text
 FinanceFlow/
-├── backend/          # API NestJS
-├── frontend/         # Aplicação React
+├── backend/           # API NestJS + Prisma
+│   ├── prisma/        # schema e migrações
+│   ├── scripts/       # backup, render-start.sh (migrações + node)
+│   └── src/
+├── frontend/          # SPA React (Vite)
+│   ├── src/
+│   └── tests/         # E2E (Playwright) e testes unitários (Vitest)
+├── .github/workflows/ # CI
+├── render.yaml        # Blueprint Render (API + Postgres + static site)
 └── README.md
 ```
 
-## 🚀 Como Executar
+---
 
-### Backend
+## Pré-requisitos
+
+- Node.js 20+ (recomendado)
+- PostgreSQL acessível (`DATABASE_URL`)
+- Conta [Clerk](https://dashboard.clerk.com) (chave publishable + secret)
+- (Opcional) [Google AI Studio](https://aistudio.google.com/apikey) para importação e comentários IA
+
+---
+
+## Como executar em local
+
+### 1. Backend
+
 ```bash
 cd backend
+cp .env.example .env
+# Editar .env: DATABASE_URL, CLERK_SECRET_KEY, etc.
+
 npm install
 npx prisma generate
 npx prisma migrate dev
 npm run start:dev
 ```
 
-### Frontend
+API: `http://localhost:3000` · Swagger: `http://localhost:3000/api/docs`
+
+### 2. Frontend
+
 ```bash
 cd frontend
+cp .env.example .env
+# Editar: VITE_API_URL, VITE_CLERK_PUBLISHABLE_KEY
+
 npm install
 npm run dev
 ```
 
-## 🔐 Variáveis de Ambiente
+App: `http://localhost:5173` (porta típica do Vite)
 
-### Backend (.env)
-```
-DATABASE_URL="postgresql://..."
-JWT_SECRET="seu-jwt-secret"
-JWT_EXPIRES_IN="7d"
-PORT=3000
-```
+### 3. Worker (opcional)
 
-### Frontend (.env)
-```
-VITE_API_URL=http://localhost:3000
+Para processar fila de jobs sem competir com a API:
+
+```bash
+cd backend
+# Na API: DISABLE_JOB_POLLER=true
+npm run start:worker
 ```
 
-## 📋 Funcionalidades
+---
 
-- ✅ Autenticação e autorização JWT
-- ✅ CRUD de transações financeiras
-- ✅ CRUD de categorias personalizadas
-- ✅ Dashboard com gráficos e métricas
-- ✅ Metas financeiras com acompanhamento
-- ✅ Relatórios e exportação de dados
-- ✅ Histórico completo de movimentações
+## Variáveis de ambiente
 
-## 🎯 Regras de Negócio
+Resumo; o detalhe está em **`backend/.env.example`** e **`frontend/.env.example`**.
 
-- Transações não podem ter valor zero ou negativo
-- Categorias não podem ser removidas se houver transações vinculadas
-- Metas devem ter data futura válida
-- Isolamento completo de dados por usuário
-- Tipo da transação deve corresponder ao tipo da categoria
+| Onde | Variáveis importantes |
+|------|------------------------|
+| Backend | `DATABASE_URL`, `CLERK_SECRET_KEY`, `FRONTEND_URL`, `GEMINI_API_KEY` (IA), `SENTRY_DSN`, `DISABLE_JOB_POLLER` |
+| Frontend | `VITE_API_URL`, `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_SENTRY_DSN` (opcional) |
 
-## 📖 Documentação
+---
 
-- Veja os arquivos `.env.example` para configuração de variáveis de ambiente
-- Use os scripts `setup-env.sh` ou `setup-env.bat` para configurar automaticamente
+## Testes e qualidade
 
-## 🛠️ Tecnologias Utilizadas
+**CI (GitHub Actions):** workflow `.github/workflows/ci.yml` — Jest no backend, Vitest + ESLint + Playwright smoke no front (build + preview). Opcional: secret `VITE_CLERK_PUBLISHABLE_KEY` para build com Clerk real.
 
-### Backend
-- **NestJS** - Framework Node.js progressivo
-- **Prisma** - ORM moderno e type-safe
-- **PostgreSQL** - Banco de dados relacional
-- **JWT** - Autenticação stateless
-- **bcrypt** - Hash de senhas
-- **class-validator** - Validação de DTOs
+```bash
+# Backend (Jest)
+cd backend && npm test
 
-### Frontend
-- **React 18** - Biblioteca UI
-- **TypeScript** - Tipagem estática
-- **Vite** - Build tool moderna
-- **Tailwind CSS** - Framework CSS utility-first
-- **Zustand** - Gerenciamento de estado leve
-- **React Router** - Roteamento
-- **Recharts** - Gráficos e visualizações
-- **Axios** - Cliente HTTP
-- **React Hot Toast** - Notificações
+# Frontend (Vitest — modo watch: npm test; CI: uma execução)
+cd frontend && npm run test:ci
 
-## 📊 Estrutura de Pastas
-
-### Backend
-```
-backend/
-├── src/
-│   ├── auth/           # Módulo de autenticação
-│   ├── users/           # Módulo de usuários
-│   ├── transactions/   # Módulo de transações
-│   ├── categories/      # Módulo de categorias
-│   ├── goals/           # Módulo de metas
-│   ├── dashboard/       # Módulo de dashboard
-│   ├── prisma/          # Serviço Prisma
-│   └── common/          # Utilitários compartilhados
-├── prisma/
-│   └── schema.prisma    # Schema do banco de dados
-└── package.json
+# E2E browser (local: subir dev ou definir E2E_BASE_URL)
+cd frontend && npm run test:e2e
 ```
 
-### Frontend
-```
-frontend/
-├── src/
-│   ├── components/      # Componentes reutilizáveis
-│   ├── pages/           # Páginas da aplicação
-│   ├── store/           # Estado global (Zustand)
-│   ├── lib/             # Utilitários e configurações
-│   ├── types/           # Definições TypeScript
-│   └── utils/           # Funções auxiliares
-└── package.json
-```
+Vitest **não** inclui `tests/e2e` (só Playwright).
 
-## 🔒 Segurança
+---
 
-- Senhas hasheadas com bcrypt (10 rounds)
-- Tokens JWT com expiração configurável
-- Validação de dados em todas as rotas
-- Isolamento de dados por usuário
-- CORS configurado
-- Validação de entrada com class-validator
+## Deploy no Render
 
-## 🚀 Deploy
+Há um **Blueprint** na raiz: [`render.yaml`](./render.yaml) — PostgreSQL (Frankfurt) + **Web Service** (API Node) + **Static Site** (Vite).
 
-### Backend (Railway/Render)
-1. Conecte o repositório
-2. Configure variáveis de ambiente
-3. Build: `npm run build`
-4. Start: `npm run start:prod`
+### Passos
 
-### Frontend (Vercel)
-1. Conecte o repositório
-2. Build: `npm run build`
-3. Output: `dist`
-4. Configure `VITE_API_URL`
+1. Repositório no GitHub com `package-lock.json` **commitado** em `backend/` e `frontend/` (necessário para `npm install` estável).
+2. No [Render](https://render.com): **New → Blueprint** → apontar para o repo → aplicar. Ajustar `branch` no `render.yaml` se não usares `main`.
+3. No painel do Render, preencher variáveis **sync: false**:
+   - **API (`financeflow-api`):** `FRONTEND_URL` = URL pública do static (ex. `https://financeflow-web.onrender.com`), `CLERK_SECRET_KEY`, `ATTACHMENT_URL_SECRET`, `GEMINI_API_KEY` (opcional mas recomendado para IA), `SENTRY_DSN` (opcional).
+   - **Static (`financeflow-web`):** `VITE_API_URL` = URL da API **sem** `/api` no fim (ex. `https://financeflow-api.onrender.com`), `VITE_CLERK_PUBLISHABLE_KEY` = chave **live** do Clerk.
+4. Depois da API estar no ar, **atualiza** `VITE_API_URL` no static (se ainda não tinhas a URL) e faz **Manual Deploy** do front — o Vite embute as env no build.
+5. **Clerk:** Domínios permitidos + redirect URLs para o URL do static e (se necessário) da API.
+6. **Health checks:** a API usa `GET /api/health/live` (liveness). Para readiness: `/api/health/ready`.
 
-## 📝 Licença
+### Notas
 
-Este projeto foi desenvolvido para portfólio profissional.
+- **`DISABLE_JOB_POLLER=true`** no blueprint: a API não processa fila; para jobs assíncronos, cria um segundo serviço **Background Worker** no Render com o mesmo `rootDir: backend`, comando `npm run start:worker` e as mesmas variáveis de BD (sem desativar o poller no worker).
+- **Anexos / `uploads/`:** no plano gratuito o disco do container é **efémero** — reinícios podem apagar ficheiros. Para produção séria usa storage object (S3, etc.) ou disco persistente pago.
+- **CORS:** `FRONTEND_URL` pode ser uma lista separada por vírgulas se tiveres mais de um origin.
 
-## 👨‍💻 Autor
-DevJPMello
+### Deploy genérico (não Render)
 
-Desenvolvido seguindo padrões profissionais de mercado, com foco em:
-- Arquitetura limpa e escalável
-- Boas práticas de desenvolvimento
-- Segurança e validação de dados
-- Experiência do usuário
+1. PostgreSQL + `prisma migrate deploy` no arranque (ex.: `backend/scripts/render-start.sh`).
+2. Backend: `npm run build` → `npm run start:prod`; probes **`/api/health/live`** e **`/api/health/ready`**.
+3. Front: `npm run build` → servir `dist` com fallback SPA para `index.html`.
+4. **Backup:** ver `backend/.env.example` e scripts em `backend/scripts/`.
+
+---
+
+## Regras de negócio (resumo)
+
+- Valor da transação deve ser positivo; tipo da transação alinhado ao tipo da categoria.
+- Dados isolados por utilizador (via Clerk + utilizador interno na BD).
+- Anexos: tipos e tamanhos limitados (ver constantes no backend e `.env.example`).
+
+---
+
+## Licença e autor
+
+Projeto de **portfolio**.  
+**Autor:** DevJPMello
+
+---
+
+*Se quiseres um link para demo em produção ou badge de CI, adiciona aqui depois de publicares.*
