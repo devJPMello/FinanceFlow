@@ -1257,7 +1257,7 @@ export default function Transactions() {
                 : '';
               const showDayHeader = sortBy.field === 'date' && dayKey !== prevKey;
               const zebraMb = idx % 2 === 1 ? 'bg-gray-50/80' : 'bg-white';
-              const pad = listDensity === 'compact' ? 'p-3 gap-2' : 'p-4 space-y-3';
+              const pad = listDensity === 'compact' ? 'p-3 space-y-2' : 'p-4 space-y-3';
               const nodes: ReactNode[] = [];
               if (showDayHeader) {
                 nodes.push(
