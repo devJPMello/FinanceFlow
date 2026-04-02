@@ -14,51 +14,110 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String
-  password  String
+  /// Null para contas criadas apenas via Clerk
+  password  String?
+  /// ID do utilizador no Clerk (user_...)
+  clerkId   String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   transactions Transaction[]
   categories   Category[]
   goals        Goal[]
+  budgets      CategoryBudget[]
+  audits       AuditLog[]
+  categorySuggestionFeedbacks CategorySuggestionFeedback[]
+  aiUsages     AiUsage[]
+  aiCachedResponses AiCachedResponse[]
+  asyncJobs    AsyncJob[]
+  suggestionDismissals UserSuggestionDismissal[]
+  importMetrics        ImportMetric[]
 
   @@map("users")
 }
 
 model Category {
-  id          String   @id @default(uuid())
-  name        String
-  type        TransactionType
-  color       String?  @default("#6366f1")
-  icon        String?
-  userId      String
+  id                    String   @id @default(uuid())
+  name                  String
+  type                  TransactionType
+  color                 String?  @default("#6366f1")
+  icon                  String?
+  /// Novas despesas nesta categoria sugerem "potencial dedução IR" (TaxVision)
+  suggestTaxDeductible  Boolean  @default(false)
+  userId                String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
+  budgets      CategoryBudget[]
+  categorySuggestionFeedbacks CategorySuggestionFeedback[]
 
   @@map("categories")
 }
 
+model CategoryBudget {
+  id         String   @id @default(uuid())
+  userId     String
+  categoryId String
+  /// Formato YYYY-MM (ex.: 2026-04)
+  month      String
+  limit      Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month])
+  @@index([userId, month])
+  @@map("category_budgets")
+}
+
 model Transaction {
-  id          String          @id @default(uuid())
-  type        TransactionType
-  amount      Decimal         @db.Decimal(10, 2)
-  description String?
-  date        DateTime        @default(now())
-  userId      String
-  categoryId  String
+  id                   String          @id @default(uuid())
+  type                 TransactionType
+  amount               Decimal         @db.Decimal(10, 2)
+  description          String?
+  /// Observação do utilizador (ações em lote / notas internas)
+  userNote             String?
+  /// Texto original do extrato (ingestão futura: OFX/PDF)
+  bankMemo             String?
+  /// Marcador informativo; não substitui orientação contábil/legal
+  deductiblePotential  Boolean         @default(false)
+  isSubscription       Boolean         @default(false)
+  date                 DateTime        @default(now())
+  userId               String
+  categoryId           String
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     Category                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachments  TransactionAttachment[]
+  recurringHints RecurringTransactionHint[]
 
   @@index([userId])
   @@index([date])
+  @@index([userId, date])
   @@index([categoryId])
   @@map("transactions")
+}
+
+/// Baú fiscal: recibos / NF ligados ao lançamento
+model TransactionAttachment {
+  id             String   @id @default(uuid())
+  fileName       String
+  mimeType       String
+  storagePath    String
+  fileSize       Int
+  transactionId  String
+  createdAt      DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("transaction_attachments")
 }
 
 model Goal {
@@ -75,6 +134,170 @@ model Goal {
 
   @@index([userId])
   @@map("goals")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  actorUserId String?
+  entity      String
+  entityId    String
+  action      String
+  beforeJson  Json?
+  afterJson   Json?
+  requestId   String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+model EndpointMetric {
+  id            String   @id @default(uuid())
+  method        String
+  route         String
+  statusCode    Int
+  latencyMs     Int
+  requestId     String?
+  createdAt     DateTime @default(now())
+
+  @@index([route, createdAt])
+  @@map("endpoint_metrics")
+}
+
+model FeatureFlag {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  enabled       Boolean  @default(false)
+  rolloutPct    Int      @default(0)
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+model AiUsage {
+  id           String   @id @default(uuid())
+  userId       String
+  route        String
+  model        String
+  tokensIn     Int      @default(0)
+  tokensOut    Int      @default(0)
+  costUsd      Decimal  @default(0) @db.Decimal(10, 4)
+  periodDay    String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, periodDay])
+  @@map("ai_usage")
+}
+
+model AiCachedResponse {
+  id           String   @id @default(uuid())
+  userId       String
+  cacheKey     String
+  route        String
+  responseJson Json
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cacheKey, route])
+  @@index([expiresAt])
+  @@map("ai_cached_responses")
+}
+
+model AsyncJob {
+  id           String   @id @default(uuid())
+  userId       String
+  type         String
+  status       String   @default("queued")
+  progress     Int      @default(0)
+  payloadJson  Json
+  resultJson   Json?
+  error        String?
+  attempts     Int      @default(0)
+  durationMs   Int?
+  createdAt    DateTime @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("async_jobs")
+}
+
+model UserSuggestionDismissal {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("user_suggestion_dismissals")
+}
+
+model ImportMetric {
+  id         String   @id @default(uuid())
+  userId     String
+  source     String
+  success    Boolean
+  durationMs Int      @default(0)
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([source, createdAt])
+  @@map("import_metrics")
+}
+
+model CategorySuggestionFeedback {
+  id            String   @id @default(uuid())
+  userId        String
+  type          TransactionType
+  inputPattern  String
+  categoryId    String
+  acceptedCount Int      @default(0)
+  rejectedCount Int      @default(0)
+  lastUsedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, inputPattern, categoryId])
+  @@index([userId, type, inputPattern])
+  @@map("category_suggestion_feedbacks")
+}
+
+model RecurringTransactionHint {
+  id            String   @id @default(uuid())
+  userId        String
+  transactionId String
+  signature     String
+  score         Float
+  intervalDays  Int
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, signature])
+  @@index([transactionId])
+  @@map("recurring_transaction_hints")
 }
 
 enum TransactionType {
