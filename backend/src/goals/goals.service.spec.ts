@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { GoalsService } from './goals.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,6 +20,12 @@ describe('GoalsService', () => {
     },
   };
 
+  const mockCache = {
+    get: jest.fn().mockResolvedValue(undefined),
+    set: jest.fn().mockResolvedValue(undefined),
+    reset: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -27,6 +34,7 @@ describe('GoalsService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
 

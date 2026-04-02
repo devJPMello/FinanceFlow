@@ -14,14 +14,16 @@ import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryQueryDto } from './dto/category-query.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CategoryBudgetQueryDto } from './dto/category-budget-query.dto';
+import { UpsertCategoryBudgetDto } from './dto/upsert-category-budget.dto';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserPayload } from '../common/interfaces/user.interface';
 import { ParamIdDto } from '../common/dto/param-id.dto';
 
 @ApiTags('categories')
 @Controller('categories')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
@@ -42,6 +44,26 @@ export class CategoriesController {
   @ApiResponse({ status: 200, description: 'Lista de categorias retornada com sucesso' })
   findAll(@CurrentUser() user: UserPayload, @Query() query: CategoryQueryDto) {
     return this.categoriesService.findAll(user.id, query);
+  }
+
+  @Get('forecast/expenses')
+  @ApiOperation({ summary: 'Previsão de despesas por categoria (média dos últimos 3 meses)' })
+  @ApiResponse({ status: 200, description: 'Projeção retornada' })
+  expenseForecast(@CurrentUser() user: UserPayload) {
+    return this.categoriesService.getExpenseForecast(user.id);
+  }
+
+  @Get('budgets')
+  @ApiOperation({ summary: 'Listar orçamentos mensais por categoria' })
+  budgets(@CurrentUser() user: UserPayload, @Query() query: CategoryBudgetQueryDto) {
+    const month = query.month ?? new Date().toISOString().slice(0, 7);
+    return this.categoriesService.listMonthlyBudgets(user.id, month);
+  }
+
+  @Post('budgets')
+  @ApiOperation({ summary: 'Criar/atualizar orçamento mensal de categoria' })
+  upsertBudget(@CurrentUser() user: UserPayload, @Body() body: UpsertCategoryBudgetDto) {
+    return this.categoriesService.upsertMonthlyBudget(user.id, body);
   }
 
   @Get(':id')

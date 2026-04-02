@@ -1,9 +1,12 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
@@ -11,7 +14,17 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class GoalsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
+
+  private async invalidateDashboardCache() {
+    const manager = this.cacheManager as Cache & { reset?: () => Promise<void> };
+    if (typeof manager.reset === 'function') {
+      await manager.reset();
+    }
+  }
 
   async create(userId: string, createGoalDto: CreateGoalDto) {
     const { deadline, targetAmount } = createGoalDto;
@@ -29,7 +42,7 @@ export class GoalsService {
       throw new BadRequestException('Valor-alvo deve ser maior que zero');
     }
 
-    return this.prisma.goal.create({
+    const created = await this.prisma.goal.create({
       data: {
         ...createGoalDto,
         targetAmount: new Decimal(targetAmount),
@@ -38,6 +51,8 @@ export class GoalsService {
         userId,
       },
     });
+    await this.invalidateDashboardCache();
+    return created;
   }
 
   async findAll(userId: string, query?: { page?: number; limit?: number }) {
@@ -109,18 +124,22 @@ export class GoalsService {
       updateData.targetAmount = new Decimal(updateData.targetAmount);
     }
 
-    return this.prisma.goal.update({
+    const updated = await this.prisma.goal.update({
       where: { id },
       data: updateData,
     });
+    await this.invalidateDashboardCache();
+    return updated;
   }
 
   async remove(userId: string, id: string) {
     await this.findOne(userId, id);
 
-    return this.prisma.goal.delete({
+    const removed = await this.prisma.goal.delete({
       where: { id },
     });
+    await this.invalidateDashboardCache();
+    return removed;
   }
 
   async updateProgress(userId: string, id: string, amount: number) {
@@ -134,11 +153,13 @@ export class GoalsService {
       ? targetAmount
       : newCurrentAmount;
 
-    return this.prisma.goal.update({
+    const updated = await this.prisma.goal.update({
       where: { id },
       data: {
         currentAmount: finalAmount,
       },
     });
+    await this.invalidateDashboardCache();
+    return updated;
   }
 }

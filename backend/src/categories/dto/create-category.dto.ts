@@ -5,6 +5,7 @@ import {
   IsOptional,
   MaxLength,
   Matches,
+  IsBoolean,
 } from 'class-validator';
 import { TransactionType } from '@prisma/client';
 
@@ -31,4 +32,8 @@ export class CreateCategoryDto {
   @IsOptional()
   @MaxLength(50, { message: 'Ícone deve ter no máximo 50 caracteres' })
   icon?: string;
+
+  @IsBoolean({ message: 'suggestTaxDeductible deve ser booleano' })
+  @IsOptional()
+  suggestTaxDeductible?: boolean;
 }

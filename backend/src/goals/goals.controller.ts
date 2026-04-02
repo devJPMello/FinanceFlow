@@ -14,14 +14,14 @@ import { GoalsService } from './goals.service';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { GoalQueryDto } from './dto/goal-query.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserPayload } from '../common/interfaces/user.interface';
 import { ParamIdDto } from '../common/dto/param-id.dto';
 
 @ApiTags('goals')
 @Controller('goals')
-@UseGuards(JwtAuthGuard)
+@UseGuards(ClerkAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class GoalsController {
   constructor(private readonly goalsService: GoalsService) {}

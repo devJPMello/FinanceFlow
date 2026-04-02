@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -12,7 +13,18 @@ describe('DashboardService', () => {
       aggregate: jest.fn(),
       count: jest.fn(),
       findMany: jest.fn(),
+      groupBy: jest.fn(),
     },
+    goal: { findMany: jest.fn() },
+    category: { findMany: jest.fn() },
+    categoryBudget: { findMany: jest.fn() },
+    $queryRaw: jest.fn(),
+    $queryRawUnsafe: jest.fn(),
+  };
+
+  const mockCache = {
+    get: jest.fn().mockResolvedValue(undefined),
+    set: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -23,6 +35,7 @@ describe('DashboardService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
 
@@ -106,35 +119,15 @@ describe('DashboardService', () => {
   });
 
   describe('getMonthlyData', () => {
-    it('deve retornar dados mensais do ano', async () => {
+    it('deve retornar dados mensais do ano (agregação SQL)', async () => {
       const userId = 'user-1';
       const year = 2024;
 
-      const mockTransactions = [
-        {
-          id: '1',
-          userId,
-          type: 'INCOME',
-          amount: new Decimal(1000),
-          date: new Date(2024, 0, 15), // Janeiro
-        },
-        {
-          id: '2',
-          userId,
-          type: 'EXPENSE',
-          amount: new Decimal(500),
-          date: new Date(2024, 0, 20), // Janeiro
-        },
-        {
-          id: '3',
-          userId,
-          type: 'INCOME',
-          amount: new Decimal(2000),
-          date: new Date(2024, 1, 10), // Fevereiro
-        },
-      ];
-
-      mockPrismaService.transaction.findMany.mockResolvedValue(mockTransactions);
+      mockPrismaService.$queryRaw.mockResolvedValue([
+        { m: 1, typ: 'INCOME', total: new Decimal(1000) },
+        { m: 1, typ: 'EXPENSE', total: new Decimal(500) },
+        { m: 2, typ: 'INCOME', total: new Decimal(2000) },
+      ]);
 
       const result = await service.getMonthlyData(userId, year);
 
@@ -145,11 +138,11 @@ describe('DashboardService', () => {
       expect(result[1].expense).toBe(0);
     });
 
-    it('deve retornar array vazio quando não há transações', async () => {
+    it('deve retornar zeros quando não há linhas agregadas', async () => {
       const userId = 'user-1';
       const year = 2024;
 
-      mockPrismaService.transaction.findMany.mockResolvedValue([]);
+      mockPrismaService.$queryRaw.mockResolvedValue([]);
 
       const result = await service.getMonthlyData(userId, year);
 
@@ -159,34 +152,17 @@ describe('DashboardService', () => {
   });
 
   describe('getCategoryStats', () => {
-    it('deve retornar estatísticas por categoria', async () => {
+    it('deve retornar estatísticas por categoria (groupBy + nomes)', async () => {
       const userId = 'user-1';
 
-      const mockTransactions = [
-        {
-          id: '1',
-          userId,
-          categoryId: 'cat-1',
-          amount: new Decimal(1000),
-          category: { id: 'cat-1', name: 'Category 1' },
-        },
-        {
-          id: '2',
-          userId,
-          categoryId: 'cat-1',
-          amount: new Decimal(500),
-          category: { id: 'cat-1', name: 'Category 1' },
-        },
-        {
-          id: '3',
-          userId,
-          categoryId: 'cat-2',
-          amount: new Decimal(2000),
-          category: { id: 'cat-2', name: 'Category 2' },
-        },
-      ];
-
-      mockPrismaService.transaction.findMany.mockResolvedValue(mockTransactions);
+      mockPrismaService.transaction.groupBy.mockResolvedValue([
+        { categoryId: 'cat-2', _sum: { amount: new Decimal(2000) } },
+        { categoryId: 'cat-1', _sum: { amount: new Decimal(1500) } },
+      ]);
+      mockPrismaService.category.findMany.mockResolvedValue([
+        { id: 'cat-1', name: 'Category 1' },
+        { id: 'cat-2', name: 'Category 2' },
+      ]);
 
       const result = await service.getCategoryStats(userId);
 
@@ -202,11 +178,12 @@ describe('DashboardService', () => {
       const startDate = new Date('2024-01-01');
       const endDate = new Date('2024-12-31');
 
-      mockPrismaService.transaction.findMany.mockResolvedValue([]);
+      mockPrismaService.transaction.groupBy.mockResolvedValue([]);
 
       await service.getCategoryStats(userId, startDate, endDate);
 
-      expect(mockPrismaService.transaction.findMany).toHaveBeenCalledWith({
+      expect(mockPrismaService.transaction.groupBy).toHaveBeenCalledWith({
+        by: ['categoryId'],
         where: {
           userId,
           date: {
@@ -214,7 +191,7 @@ describe('DashboardService', () => {
             lte: endDate,
           },
         },
-        include: { category: true },
+        _sum: { amount: true },
       });
     });
   });
