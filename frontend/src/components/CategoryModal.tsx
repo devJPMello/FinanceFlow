@@ -9,12 +9,15 @@ import { categorySchema, type CategoryFormData } from '../lib/validations';
 
 interface CategoryModalProps {
   category?: Category | null;
+  /** Ao criar (sem `category`), pré-seleciona receita ou despesa */
+  initialType?: TransactionType;
   onClose: () => void;
   onSave: () => void;
 }
 
 export default function CategoryModal({
   category,
+  initialType,
   onClose,
   onSave,
 }: CategoryModalProps) {
@@ -33,10 +36,12 @@ export default function CategoryModal({
       name: '',
       type: TransactionType.EXPENSE,
       color: '#16A34A',
+      suggestTaxDeductible: false,
     },
   });
 
   const watchedColor = watch('color');
+  const watchedType = watch('type');
 
   useEffect(() => {
     if (category) {
@@ -44,25 +49,34 @@ export default function CategoryModal({
         name: category.name,
         type: category.type,
         color: category.color,
+        suggestTaxDeductible: category.suggestTaxDeductible ?? false,
       });
     } else {
+      const t = initialType ?? TransactionType.EXPENSE;
       reset({
         name: '',
-        type: TransactionType.EXPENSE,
-        color: '#16A34A',
+        type: t,
+        color: t === TransactionType.INCOME ? '#22C55E' : '#16A34A',
+        suggestTaxDeductible: false,
       });
     }
-  }, [category, reset]);
+  }, [category, initialType, reset]);
 
   const onSubmit = async (data: CategoryFormData) => {
     setLoading(true);
 
+    const payload = {
+      ...data,
+      suggestTaxDeductible:
+        data.type === TransactionType.EXPENSE ? !!data.suggestTaxDeductible : false,
+    };
+
     try {
       if (category) {
-        await api.patch(`/categories/${category.id}`, data);
+        await api.patch(`/categories/${category.id}`, payload);
         toast.success('Categoria atualizada com sucesso');
       } else {
-        await api.post('/categories', data);
+        await api.post('/categories', payload);
         toast.success('Categoria criada com sucesso');
       }
       onSave();
@@ -138,6 +152,24 @@ export default function CategoryModal({
               <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
             )}
           </div>
+
+          {watchedType === TransactionType.EXPENSE && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50/80 border border-amber-100">
+              <input
+                type="checkbox"
+                id="suggestTaxDeductible"
+                className="mt-1 rounded border-gray-300 text-[#16A34A] focus:ring-[#16A34A]"
+                {...register('suggestTaxDeductible')}
+              />
+              <label htmlFor="suggestTaxDeductible" className="text-sm text-gray-800 cursor-pointer">
+                <span className="font-semibold text-gray-900">TaxVision</span>
+                <span className="block text-gray-600 mt-0.5">
+                  Novas despesas nesta categoria sugerem automaticamente &quot;potencial dedução no IR&quot;
+                  (saúde, educação, dependentes, etc.).
+                </span>
+              </label>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">

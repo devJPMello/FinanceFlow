@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import api from '../lib/api';
-import { Transaction, TransactionType, Category } from '../types';
+import { Transaction, TransactionType, Category, TransactionAttachmentMeta } from '../types';
 import toast from 'react-hot-toast';
-import { X } from 'lucide-react';
+import { X, Paperclip, Download, Upload } from 'lucide-react';
 import { transactionSchema, type TransactionFormData } from '../lib/validations';
 
 interface TransactionModalProps {
@@ -21,6 +21,8 @@ export default function TransactionModal({
   onSave,
 }: TransactionModalProps) {
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<TransactionAttachmentMeta[]>([]);
+  const [attachLoading, setAttachLoading] = useState(false);
 
   const {
     register,
@@ -37,10 +39,13 @@ export default function TransactionModal({
       description: '',
       date: new Date().toISOString().split('T')[0],
       categoryId: '',
+      deductiblePotential: false,
     },
   });
 
   const watchedType = watch('type');
+  const watchedCategoryId = watch('categoryId');
+  const deductibleWatch = watch('deductiblePotential');
 
   useEffect(() => {
     if (transaction) {
@@ -50,6 +55,7 @@ export default function TransactionModal({
         description: transaction.description || '',
         date: transaction.date.split('T')[0],
         categoryId: transaction.categoryId,
+        deductiblePotential: transaction.deductiblePotential ?? false,
       });
     } else {
       reset({
@@ -58,14 +64,50 @@ export default function TransactionModal({
         description: '',
         date: new Date().toISOString().split('T')[0],
         categoryId: '',
+        deductiblePotential: false,
       });
     }
   }, [transaction, reset]);
 
-  // Resetar categoria quando o tipo mudar
   useEffect(() => {
+    if (transaction) return;
+    const cat = categories.find((c) => c.id === watchedCategoryId);
+    if (watchedType === TransactionType.INCOME) {
+      setValue('deductiblePotential', false);
+      return;
+    }
+    if (watchedType === TransactionType.EXPENSE && cat?.suggestTaxDeductible) {
+      setValue('deductiblePotential', true);
+    } else if (watchedType === TransactionType.EXPENSE && cat && watchedCategoryId) {
+      setValue('deductiblePotential', false);
+    }
+  }, [watchedCategoryId, watchedType, categories, transaction, setValue]);
+
+  useEffect(() => {
+    if (!transaction?.id) {
+      setAttachments([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get<TransactionAttachmentMeta[]>(
+          `/transactions/${transaction.id}/attachments`,
+        );
+        if (!cancelled) setAttachments(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setAttachments([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [transaction?.id]);
+
+  useEffect(() => {
+    if (transaction) return;
     setValue('categoryId', '');
-  }, [watchedType, setValue]);
+  }, [watchedType, setValue, transaction]);
 
   const filteredCategories = categories.filter(
     (cat) => cat.type === watchedType
@@ -74,12 +116,18 @@ export default function TransactionModal({
   const onSubmit = async (data: TransactionFormData) => {
     setLoading(true);
 
+    const payload = {
+      ...data,
+      deductiblePotential:
+        data.type === TransactionType.EXPENSE ? !!data.deductiblePotential : false,
+    };
+
     try {
       if (transaction) {
-        await api.patch(`/transactions/${transaction.id}`, data);
+        await api.patch(`/transactions/${transaction.id}`, payload);
         toast.success('Transação atualizada com sucesso');
       } else {
-        await api.post('/transactions', data);
+        await api.post('/transactions', payload);
         toast.success('Transação criada com sucesso');
       }
       onSave();
@@ -90,13 +138,53 @@ export default function TransactionModal({
     }
   };
 
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !transaction?.id) return;
+    setAttachLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      await api.post(`/transactions/${transaction.id}/attachments`, fd);
+      toast.success('Anexo guardado');
+      const { data } = await api.get<TransactionAttachmentMeta[]>(
+        `/transactions/${transaction.id}/attachments`,
+      );
+      setAttachments(Array.isArray(data) ? data : []);
+      onSave();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Erro ao enviar anexo');
+    } finally {
+      setAttachLoading(false);
+    }
+  };
+
+  const downloadAttachment = async (attachmentId: string, fileName: string) => {
+    if (!transaction?.id) return;
+    try {
+      const res = await api.get(
+        `/transactions/${transaction.id}/attachments/${attachmentId}/download`,
+        { responseType: 'blob' },
+      );
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Erro ao descarregar');
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up custom-scrollbar"
+        className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up custom-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -190,6 +278,68 @@ export default function TransactionModal({
               placeholder="Adicione uma descrição..."
             />
           </div>
+
+          {transaction?.id && (
+            <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-100 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Paperclip className="w-4 h-4 text-amber-700" />
+                Baú fiscal (anexos)
+              </div>
+              <p className="text-xs text-gray-600">
+                Notas fiscais e recibos ligados a este lançamento. Use após importar o extrato ou criar a transação.
+              </p>
+              <label className="inline-flex items-center gap-2 text-sm text-[#16A34A] font-medium cursor-pointer">
+                <Upload className="w-4 h-4" />
+                {attachLoading ? 'A enviar…' : 'Adicionar ficheiro (máx. 5 MB)'}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*,.pdf,application/pdf"
+                  disabled={attachLoading}
+                  onChange={handleAttachmentUpload}
+                />
+              </label>
+              {attachments.length > 0 && (
+                <ul className="space-y-2 text-sm border-t border-amber-100 pt-3">
+                  {attachments.map((a) => (
+                    <li
+                      key={a.id}
+                      className="flex items-center justify-between gap-2 text-gray-700"
+                    >
+                      <span className="truncate">{a.fileName}</span>
+                      <button
+                        type="button"
+                        onClick={() => downloadAttachment(a.id, a.fileName)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg flex-shrink-0"
+                        title="Descarregar"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {watchedType === TransactionType.EXPENSE && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <input
+                type="checkbox"
+                id="deductiblePotential"
+                className="mt-1 rounded border-gray-300 text-[#16A34A] focus:ring-[#16A34A]"
+                checked={!!deductibleWatch}
+                onChange={(e) => setValue('deductiblePotential', e.target.checked)}
+              />
+              <label htmlFor="deductiblePotential" className="text-sm text-gray-800 cursor-pointer">
+                <span className="font-semibold text-gray-900">Potencial dedução no IR</span>
+                <span className="block text-gray-600 mt-0.5">
+                  Marque despesas que podem reduzir imposto (ex.: saúde, educação), conforme regras da Receita.
+                  Apenas informativo — confirme com seu contador.
+                </span>
+              </label>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
             <button type="button" onClick={onClose} className="btn-secondary">

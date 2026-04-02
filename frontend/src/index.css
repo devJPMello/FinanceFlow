@@ -11,6 +11,7 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight text-[#111827];
   }
+
 }
 
 @layer components {
@@ -117,4 +118,5 @@
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-gray-300 rounded-full hover:bg-gray-400;
   }
+
 }

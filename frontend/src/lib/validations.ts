@@ -47,6 +47,7 @@ export const transactionSchema = z.object({
   description: z.string().optional(),
   date: z.string().min(1, 'Data é obrigatória'),
   categoryId: z.string().min(1, 'Categoria é obrigatória'),
+  deductiblePotential: z.boolean().optional(),
 });
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -61,6 +62,7 @@ export const categorySchema = z.object({
     message: 'Tipo é obrigatório',
   }),
   color: z.string().optional(),
+  suggestTaxDeductible: z.boolean().optional(),
 });
 
 export type CategoryFormData = z.infer<typeof categorySchema>;

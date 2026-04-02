@@ -1,16 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
-import { DashboardSummary, MonthlyData, CategoryStat } from '../types';
+import {
+  DashboardSummary,
+  MonthlyData,
+  CategoryStat,
+  DashboardMonthSummary,
+  PendingPanel,
+  BudgetOverviewRow,
+  MonthlyClosing,
+} from '../types';
 import {
   TrendingUp,
-  TrendingDown,
-  DollarSign,
   Receipt,
-  ArrowUpRight,
-  ArrowDownRight,
   RefreshCw,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   BarChart,
@@ -27,44 +32,101 @@ import {
 } from 'recharts';
 import { formatCurrency } from '../utils/format';
 import toast from 'react-hot-toast';
+import { getApiErrorWithRequestId } from '../lib/apiErrors';
+import { dashboardFocusMonth } from '../lib/periodContext';
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#06b6d4'];
 
+function transactionsPathWithMonth(actionPath: string, month: string): string {
+  const [pathOnly, hash] = actionPath.split('#');
+  const sep = pathOnly.includes('?') ? '&' : '?';
+  return `${pathOnly}${sep}month=${encodeURIComponent(month)}${hash ? `#${hash}` : ''}`;
+}
+
 export default function Dashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [monthSummary, setMonthSummary] = useState<DashboardMonthSummary | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([]);
+  const [pending, setPending] = useState<PendingPanel | null>(null);
+  const [budgetOverview, setBudgetOverview] = useState<BudgetOverviewRow[]>([]);
+  const [monthlyClosing, setMonthlyClosing] = useState<MonthlyClosing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [extrasLoading, setExtrasLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const initialLoadDone = useRef(false);
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+  const focusMonthKey = dashboardFocusMonth(selectedYear);
 
   useEffect(() => {
-    loadDashboardData();
+    void loadDashboardData();
   }, [selectedYear]);
 
-  const loadDashboardData = async (isRefresh = false) => {
+  const loadDashboardData = async (options?: { isRefresh?: boolean }) => {
+    const isRefresh = options?.isRefresh ?? false;
+    const firstPaint = !initialLoadDone.current;
     try {
-      if (isRefresh) setRefreshing(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else if (!firstPaint) {
+        setRefreshing(true);
+      }
+      setExtrasLoading(true);
+      if (firstPaint) {
+        setLoading(true);
+      } else {
+        setCategoryStats([]);
+        setBudgetOverview([]);
+        setMonthlyClosing(null);
+        setPending(null);
+      }
       setError(null);
-      
-      const [summaryRes, monthlyRes, categoriesRes] = await Promise.all([
+
+      const focusMonth = dashboardFocusMonth(selectedYear);
+
+      const [summaryRes, monthlyRes, monthSummaryRes] = await Promise.all([
         api.get('/dashboard/summary'),
         api.get(`/dashboard/monthly?year=${selectedYear}`),
-        api.get('/dashboard/categories'),
+        api.get('/dashboard/month-summary', { params: { month: focusMonth } }),
       ]);
 
       setSummary(summaryRes.data);
       setMonthlyData(monthlyRes.data);
-      setCategoryStats(categoriesRes.data);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Erro ao carregar dados do dashboard';
+      setMonthSummary(monthSummaryRes.data);
+      setLoading(false);
+      if (firstPaint) {
+        initialLoadDone.current = true;
+      }
+
+      void Promise.all([
+        api.get('/dashboard/categories'),
+        api.get('/dashboard/pending'),
+        api.get('/dashboard/budget-overview', { params: { month: focusMonth } }),
+        api.get<MonthlyClosing>('/dashboard/monthly-closing', { params: { month: focusMonth } }),
+      ])
+        .then(([categoriesRes, pendingRes, budgetRes, closingRes]) => {
+          setCategoryStats(categoriesRes.data);
+          setPending(pendingRes.data);
+          setBudgetOverview(Array.isArray(budgetRes.data) ? budgetRes.data : []);
+          setMonthlyClosing(closingRes.data);
+        })
+        .catch((err: unknown) => {
+          console.error(err);
+          toast.error(getApiErrorWithRequestId(err));
+        })
+        .finally(() => {
+          setExtrasLoading(false);
+          setRefreshing(false);
+        });
+    } catch (error: unknown) {
+      const errorMessage = getApiErrorWithRequestId(error);
       setError(errorMessage);
       toast.error(errorMessage);
-    } finally {
       setLoading(false);
+      setExtrasLoading(false);
       setRefreshing(false);
     }
   };
@@ -77,8 +139,12 @@ export default function Dashboard() {
             <AlertCircle className="w-16 h-16 text-red-600 mb-4" />
             <h3 className="text-xl font-bold text-red-900 mb-2">Erro ao carregar dados</h3>
             <p className="text-red-700 mb-6 text-center">{error}</p>
-            <button onClick={() => loadDashboardData(true)} className="btn-primary">
-              <RefreshCw className="w-4 h-4 mr-2" />
+            <button
+              type="button"
+              onClick={() => void loadDashboardData({ isRefresh: true })}
+              className="btn-primary inline-flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4 shrink-0" />
               Tentar novamente
             </button>
           </div>
@@ -133,7 +199,12 @@ export default function Dashboard() {
     month: monthNames[item.month - 1],
   }));
 
-  const isPositive = (summary?.balance || 0) >= 0;
+  const isPositive = (monthSummary?.balance ?? summary?.balance ?? 0) >= 0;
+  const monthVariationLabel = (() => {
+    if (!monthSummary || monthSummary.balanceVariationPercent === null) return 'Sem base comparativa';
+    const value = monthSummary.balanceVariationPercent;
+    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}% vs mês anterior`;
+  })();
 
   const hasNoData = !summary || (summary.transactionCount === 0 && monthlyData.length === 0);
 
@@ -142,7 +213,7 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600 text-lg">Visão geral das suas finanças</p>
+          <p className="text-gray-600 text-lg">Resumo financeiro com contexto mensal</p>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -157,7 +228,7 @@ export default function Dashboard() {
             ))}
           </select>
           <button
-            onClick={() => loadDashboardData(true)}
+            onClick={() => void loadDashboardData({ isRefresh: true })}
             disabled={refreshing}
             className="btn-secondary flex items-center gap-2"
             title="Atualizar dados"
@@ -167,6 +238,164 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      <div className="card-gradient border border-gray-100">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h2 className="text-xl font-bold text-gray-900">Resumo do mês</h2>
+            {monthSummary?.month && (
+              <span className="text-xs font-semibold text-gray-500 tabular-nums shrink-0">
+                {monthSummary.month}
+              </span>
+            )}
+            <Link
+              to={`/transactions?month=${encodeURIComponent(focusMonthKey)}`}
+              className="text-xs font-semibold text-[#16A34A] hover:underline shrink-0"
+            >
+              Ver transações deste período →
+            </Link>
+          </div>
+          <span
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              monthSummary?.balanceVariationPercent && monthSummary.balanceVariationPercent < 0
+                ? 'bg-red-100 text-[#EF4444]'
+                : 'bg-green-100 text-[#16A34A]'
+            }`}
+          >
+            {monthVariationLabel}
+          </span>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Saldo</p>
+            <p className={`text-2xl font-bold ${isPositive ? 'text-[#16A34A]' : 'text-[#EF4444]'}`}>
+              {formatCurrency(monthSummary?.balance ?? 0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Receitas</p>
+            <p className="text-2xl font-bold text-[#16A34A]">{formatCurrency(monthSummary?.totalIncome ?? 0)}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Despesas</p>
+            <p className="text-2xl font-bold text-[#EF4444]">{formatCurrency(monthSummary?.totalExpense ?? 0)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="card-gradient">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-amber-100">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Pendências</h2>
+            <p className="text-sm text-gray-600">Painel único para revisar o que está faltando</p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-gray-50 divide-y divide-gray-100">
+          {extrasLoading ? (
+            <div className="px-4 py-4 space-y-3 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex justify-between gap-4">
+                  <div className="h-4 bg-gray-200 rounded w-48" />
+                  <div className="h-4 bg-gray-200 rounded w-8" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {(pending?.items ?? []).map((item) => (
+                <Link
+                  key={item.id}
+                  to={item.actionPath}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/70 transition-colors"
+                >
+                  <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                  <span className="text-sm font-bold text-gray-900">{item.count}</span>
+                </Link>
+              ))}
+              {(!pending || pending.items.length === 0) && (
+                <div className="px-4 py-6 text-sm text-gray-500">Nenhuma pendência no momento.</div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {monthlyClosing && (
+        <div className="card-gradient border border-gray-100">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Fechamento mensal</h2>
+              <p className="text-sm text-gray-600">
+                {monthlyClosing.month} · {monthlyClosing.completedSteps}/{monthlyClosing.totalSteps - 1} passos
+                concluídos ({monthlyClosing.percent}%)
+                {monthlyClosing.monthTransactionCount === 0 && (
+                  <span className="block mt-1 text-gray-500">
+                    Sem lançamentos neste mês — os três primeiros itens só contam depois que houver movimentos.
+                  </span>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0 justify-end">
+              <Link
+                to={`/transactions?month=${encodeURIComponent(monthlyClosing.month)}`}
+                className="btn-secondary text-sm py-2 px-3"
+                title="Abrir lançamentos filtrados por este mês"
+              >
+                Ver transações
+              </Link>
+              <Link to="/tax-vision" className="btn-secondary text-sm py-2 px-3">
+                TaxVision
+              </Link>
+            </div>
+          </div>
+          <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden mb-4">
+            <div
+              className="h-full bg-[#16A34A] transition-all"
+              style={{ width: `${monthlyClosing.percent}%` }}
+            />
+          </div>
+          <div className="rounded-xl border border-gray-100 bg-gray-50 divide-y divide-gray-100">
+            {monthlyClosing.steps.map((step) => (
+              <Link
+                key={step.key}
+                to={
+                  step.key === 'review-details' || step.key === 'attachments'
+                    ? transactionsPathWithMonth(step.actionPath, monthlyClosing.month)
+                    : step.actionPath
+                }
+                className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/70 transition-colors"
+              >
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{step.title}</p>
+                  <p className="text-xs text-gray-500">{step.detail}</p>
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    step.key === 'export'
+                      ? 'bg-gray-100 text-gray-600'
+                      : step.applicable === false
+                        ? 'bg-gray-100 text-gray-500 font-semibold'
+                        : step.done
+                          ? 'bg-green-100 text-[#16A34A]'
+                          : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {step.key === 'export'
+                    ? 'Ação'
+                    : step.applicable === false
+                      ? '—'
+                      : step.done
+                        ? 'OK'
+                        : step.count}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {hasNoData ? (
         <div className="card-gradient text-center py-16">
@@ -184,96 +413,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="card-gradient group hover:scale-[1.02] transition-transform duration-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Saldo Atual</p>
-              <p className={`text-3xl font-bold mb-2 ${
-                isPositive ? 'text-[#22C55E]' : 'text-[#EF4444]'
-              }`}>
-                {formatCurrency(summary?.balance || 0)}
-              </p>
-              <div className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-full ${
-                isPositive 
-                  ? 'bg-green-100 text-[#22C55E]' 
-                  : 'bg-red-100 text-[#EF4444]'
-              }`}>
-                {isPositive ? (
-                  <>
-                    <ArrowUpRight className="w-3 h-3 mr-1" />
-                    Positivo
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownRight className="w-3 h-3 mr-1" />
-                    Negativo
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="p-4 bg-[#16A34A] rounded-2xl shadow-lg shadow-[#16A34A]/30">
-              <DollarSign className="w-7 h-7 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="card-gradient group hover:scale-[1.02] transition-transform duration-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Total de Receitas</p>
-              <p className="text-3xl font-bold text-[#22C55E] mb-2">
-                {formatCurrency(summary?.totalIncome || 0)}
-              </p>
-              <div className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-[#22C55E]">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                Entradas
-              </div>
-            </div>
-            <div className="p-4 bg-[#22C55E] rounded-2xl shadow-lg shadow-[#22C55E]/30">
-              <TrendingUp className="w-7 h-7 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="card-gradient group hover:scale-[1.02] transition-transform duration-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Total de Despesas</p>
-              <p className="text-3xl font-bold text-[#EF4444] mb-2">
-                {formatCurrency(summary?.totalExpense || 0)}
-              </p>
-              <div className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-[#EF4444]">
-                <TrendingDown className="w-3 h-3 mr-1" />
-                Saídas
-              </div>
-            </div>
-            <div className="p-4 bg-[#EF4444] rounded-2xl shadow-lg shadow-[#EF4444]/30">
-              <TrendingDown className="w-7 h-7 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="card-gradient group hover:scale-[1.02] transition-transform duration-300">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Transações</p>
-              <p className="text-3xl font-bold text-gray-900 mb-2">
-                {summary?.transactionCount || 0}
-              </p>
-              <div className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                <Receipt className="w-3 h-3 mr-1" />
-                Total
-              </div>
-            </div>
-            <div className="p-4 bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl shadow-lg shadow-gray-500/30">
-              <Receipt className="w-7 h-7 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -330,7 +469,9 @@ export default function Dashboard() {
             </h2>
             <p className="text-sm text-gray-600">Distribuição dos gastos</p>
           </div>
-          {categoryStats.length > 0 ? (
+          {extrasLoading ? (
+            <div className="h-80 rounded-xl bg-gray-100 animate-pulse" />
+          ) : categoryStats.length > 0 ? (
             <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
@@ -366,6 +507,74 @@ export default function Dashboard() {
               <Receipt className="w-16 h-16 mb-4 opacity-50" />
               <p className="text-lg font-medium">Nenhuma categoria encontrada</p>
               <p className="text-sm mt-1">Adicione transações para ver os dados</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card-gradient">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl font-bold text-gray-900">Orçamento mensal por categoria</h2>
+              {monthSummary?.month && (
+                <span className="text-xs font-semibold text-gray-500 tabular-nums">
+                  {monthSummary.month}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600">Semáforo por categoria com projeção até o fim do mês</p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-gray-50 overflow-hidden">
+          {extrasLoading ? (
+            <div className="px-4 py-4 space-y-4 animate-pulse">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-40" />
+                  <div className="h-2 bg-gray-200 rounded w-full" />
+                </div>
+              ))}
+            </div>
+          ) : budgetOverview.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-gray-500">
+              Nenhum orçamento cadastrado. Configure os limites nas categorias.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {budgetOverview.slice(0, 8).map((row) => (
+                <div key={row.categoryId} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <p className="text-sm font-semibold text-gray-900">{row.categoryName}</p>
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        row.status === 'red'
+                          ? 'bg-red-100 text-[#EF4444]'
+                          : row.status === 'yellow'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-green-100 text-[#16A34A]'
+                      }`}
+                    >
+                      {row.status === 'red' ? 'Risco alto' : row.status === 'yellow' ? 'Atenção' : 'Saudável'}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden mb-2">
+                    <div
+                      className={`h-full ${
+                        row.status === 'red'
+                          ? 'bg-[#EF4444]'
+                          : row.status === 'yellow'
+                          ? 'bg-amber-500'
+                          : 'bg-[#16A34A]'
+                      }`}
+                      style={{ width: `${Math.min(row.projectedUsagePercent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Gasto {formatCurrency(row.spent)} de {formatCurrency(row.limit)} · Projeção {formatCurrency(row.projectedSpent)}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </div>

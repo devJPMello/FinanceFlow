@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import api from '../lib/api';
+import api, { type ApiAxiosError } from '../lib/api';
+import { getApiErrorWithRequestId } from '../lib/apiErrors';
+import { GoalCardsSkeleton } from '../components/LoadingSkeletons';
 import { Goal } from '../types';
-import { Plus, Edit, Trash2, Target, Filter } from 'lucide-react';
+import { Edit, Trash2, Target, Filter, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import GoalModal from '../components/GoalModal';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
@@ -24,8 +26,8 @@ export default function Goals() {
       const response = await api.get('/goals');
       const data = response.data?.data || response.data;
       setGoals(Array.isArray(data) ? data : []);
-    } catch (error) {
-      toast.error('Erro ao carregar metas');
+    } catch (error: unknown) {
+      toast.error(getApiErrorWithRequestId(error));
     } finally {
       setLoading(false);
     }
@@ -36,8 +38,8 @@ export default function Goals() {
       await api.delete(`/goals/${id}`);
       toast.success('Meta excluída com sucesso');
       loadGoals();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Erro ao excluir meta');
+    } catch (error: unknown) {
+      toast.error((error as ApiAxiosError).friendlyMessage || getApiErrorWithRequestId(error));
     }
   };
 
@@ -76,18 +78,9 @@ export default function Goals() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Metas Financeiras</h1>
-          <p className="text-gray-600 text-lg">Acompanhe seus objetivos</p>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="btn-primary flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nova Meta</span>
-        </button>
+      <div>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Metas Financeiras</h1>
+        <p className="text-gray-600 text-lg">Acompanhe progresso, prazo e valor restante</p>
       </div>
 
       {/* Filtros */}
@@ -98,7 +91,7 @@ export default function Goals() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-gray-900">Filtros</h2>
-            <p className="text-sm text-gray-600">Filtre suas metas</p>
+            <p className="text-sm text-gray-600">Status das metas</p>
           </div>
         </div>
         <select
@@ -113,37 +106,55 @@ export default function Goals() {
         </select>
       </div>
 
-      {loading ? (
-        <div className="text-center py-8 text-gray-500">Carregando...</div>
-      ) : filteredGoals.length === 0 ? (
-        <div className="card-gradient text-center py-12">
-          <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-900 mb-2">
-            {goals.length === 0 ? 'Nenhuma meta cadastrada' : 'Nenhuma meta encontrada'}
-          </h3>
-          <p className="text-gray-600 mb-6">
-            {goals.length === 0
-              ? 'Crie sua primeira meta financeira para começar'
-              : 'Tente ajustar os filtros de busca'}
-          </p>
-          {goals.length === 0 && (
-            <button onClick={() => setIsModalOpen(true)} className="btn-primary">
-              Criar primeira meta
-            </button>
-          )}
+      <div className="card-gradient">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Metas</h2>
+            <p className="text-sm text-gray-600">
+              {loading ? 'A carregar...' : `${filteredGoals.length} meta(s) encontrada(s)`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="btn-secondary text-sm py-2.5 px-4 shrink-0 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Nova meta
+          </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGoals.map((goal, index) => {
+        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+          {loading ? (
+            <GoalCardsSkeleton />
+          ) : filteredGoals.length === 0 ? (
+            <div className="px-4 py-12 text-center">
+              <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                {goals.length === 0 ? 'Nenhuma meta cadastrada' : 'Nenhuma meta encontrada'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {goals.length === 0
+                  ? 'Crie sua primeira meta financeira para começar'
+                  : 'Tente ajustar os filtros de busca'}
+              </p>
+              {goals.length === 0 && (
+                <button onClick={() => setIsModalOpen(true)} className="btn-primary">
+                  Criar primeira meta
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredGoals.map((goal, index) => {
             const progress = getProgress(goal);
             const overdue = isOverdue(goal.deadline);
 
-            return (
-              <div
-                key={goal.id}
-                className="card-gradient hover:scale-[1.02] transition-transform duration-200"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
+                return (
+                  <div
+                    key={goal.id}
+                    className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md transition-all duration-200"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -221,15 +232,17 @@ export default function Goals() {
                 </div>
 
                 {overdue && (
-                  <div className="mt-4 p-2 bg-red-50 rounded text-center">
-                    <p className="text-sm text-[#EF4444] font-medium">Prazo expirado</p>
+                  <div className="mt-4 p-2 bg-gray-50 border border-gray-100 rounded text-center">
+                    <p className="text-sm text-gray-600 font-medium">Prazo expirado</p>
                   </div>
                 )}
-              </div>
-            );
-          })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {isModalOpen && (
         <GoalModal

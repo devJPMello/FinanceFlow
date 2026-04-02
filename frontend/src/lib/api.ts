@@ -1,4 +1,5 @@
-import axios from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { getFriendlyApiMessage } from './apiErrors';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -9,31 +10,38 @@ const api = axios.create({
   },
 });
 
-// Interceptor para adicionar token JWT
+export type ApiAxiosError = AxiosError & { friendlyMessage?: string };
+
+let getClerkToken: (() => Promise<string | null>) | null = null;
+
+/** Chamado a partir de um componente dentro do ClerkProvider (ver ClerkApiBridge). */
+export function configureApiAuth(getToken: () => Promise<string | null>) {
+  getClerkToken = getToken;
+}
+
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config: InternalAxiosRequestConfig) => {
+    if (!config.headers['X-Request-ID']) {
+      config.headers['X-Request-ID'] = crypto.randomUUID();
+    }
+    if (getClerkToken) {
+      const token = await getClerkToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error),
 );
 
-// Interceptor para tratar erros
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
+  (error: AxiosError) => {
+    const friendly = getFriendlyApiMessage(error);
+    (error as ApiAxiosError).friendlyMessage = friendly;
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
