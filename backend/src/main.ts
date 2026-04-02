@@ -1,7 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as Sentry from '@sentry/node';
+import { randomUUID } from 'crypto';
+import type { Request, Response } from 'express';
 import { AppModule } from './app.module';
+import { MetricsService } from './common/services/metrics.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -10,9 +14,59 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // Habilitar CORS para comunicação com frontend
+  if (process.env.NODE_ENV === 'production') {
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  }
+
+  const sentryDsn = process.env.SENTRY_DSN?.trim();
+  if (sentryDsn) {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: process.env.NODE_ENV || 'development',
+    });
+    logger.log('Sentry inicializado');
+  }
+
+  const metricsService = app.get(MetricsService);
+  app.use((req: Request & { requestId?: string }, res: Response, next) => {
+    const startedAt = Date.now();
+    const requestId = (req.headers['x-request-id'] as string | undefined)?.trim() || randomUUID();
+    req.requestId = requestId;
+    res.setHeader('x-request-id', requestId);
+    res.on('finish', () => {
+      const durationMs = Date.now() - startedAt;
+      void metricsService.recordEndpointMetric({
+        method: req.method,
+        route: req.originalUrl || req.url || 'unknown',
+        statusCode: res.statusCode,
+        latencyMs: durationMs,
+        requestId,
+      });
+      logger.log(
+        JSON.stringify({
+          msg: 'http_request',
+          requestId,
+          method: req.method,
+          path: req.originalUrl || req.url,
+          statusCode: res.statusCode,
+          durationMs,
+        }),
+      );
+    });
+    next();
+  });
+
+  // CORS: URL do static no Render (ou localhost). Vários hosts: separar por vírgula.
+  const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const allowedOrigins = corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+  const corsValue =
+    allowedOrigins.length === 0
+      ? 'http://localhost:5173'
+      : allowedOrigins.length === 1
+        ? allowedOrigins[0]
+        : allowedOrigins;
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: corsValue,
     credentials: true,
   });
 
@@ -41,18 +95,19 @@ async function bootstrap() {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter JWT token',
+        name: 'Clerk',
+        description: 'Token de sessão do Clerk (header Authorization)',
         in: 'header',
       },
       'JWT-auth',
     )
-    .addTag('auth', 'Autenticação e autorização')
     .addTag('users', 'Gerenciamento de usuários')
     .addTag('transactions', 'Transações financeiras')
     .addTag('categories', 'Categorias de transações')
     .addTag('goals', 'Metas financeiras')
     .addTag('dashboard', 'Dashboard e relatórios')
+    .addTag('tax-insights', 'TaxVision — visão fiscal e deduções')
+    .addTag('ai-insights', 'Comentários com IA (Gemini)')
     .addTag('health', 'Health check e monitoramento')
     .build();
 

@@ -16,6 +16,8 @@ describe('HttpExceptionFilter', () => {
     };
     mockRequest = {
       url: '/test/path',
+      method: 'GET',
+      headers: {},
     };
     mockArgumentsHost = {
       switchToHttp: jest.fn().mockReturnValue({
@@ -55,6 +57,7 @@ describe('HttpExceptionFilter', () => {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       timestamp: expect.any(String),
       path: '/test/path',
+      requestId: undefined,
       message: 'Erro interno do servidor',
     });
   });
@@ -72,6 +75,7 @@ describe('HttpExceptionFilter', () => {
       statusCode: HttpStatus.BAD_REQUEST,
       timestamp: expect.any(String),
       path: '/test/path',
+      requestId: undefined,
       message: 'Validation failed',
     });
   });
