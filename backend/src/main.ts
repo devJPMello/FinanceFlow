@@ -71,6 +71,7 @@ async function bootstrap() {
     origin: corsValue,
     credentials: true,
   });
+  logger.log(`CORS: origem(ns) permitida(s): ${JSON.stringify(corsValue)}`);
 
   // Prefixo global para todas as rotas
   app.setGlobalPrefix('api');

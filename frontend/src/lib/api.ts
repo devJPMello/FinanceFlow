@@ -1,7 +1,22 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { getFriendlyApiMessage } from './apiErrors';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const DEFAULT_DEV_API = 'http://localhost:3000';
+
+function resolveApiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_URL?.trim();
+  const base = raw && raw.length > 0 ? raw : DEFAULT_DEV_API;
+  return base.replace(/\/+$/, '');
+}
+
+const API_URL = resolveApiBaseUrl();
+
+if (import.meta.env.PROD && API_URL === DEFAULT_DEV_API) {
+  // Sem VITE_API_URL no build do Render, o browser tenta localhost → "Network Error"
+  console.error(
+    '[FinanceFlow] VITE_API_URL não está definida no build de produção. No Render (Static Site), defina VITE_API_URL com a URL pública da API, sem /api no fim (ex. https://financeflow-api.onrender.com) e faça um novo deploy.',
+  );
+}
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
