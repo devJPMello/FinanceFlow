@@ -1,109 +1,77 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClerkClient } from '@clerk/backend';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { LoginDto } from './dto/login.dto';
+import { UserPayload } from '../common/interfaces/user.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
-  async register(createUserDto: CreateUserDto) {
-    const { email, password, name } = createUserDto;
-
-    // Verificar se usuário já existe
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+  /**
+   * Garante um utilizador local alinhado ao Clerk (cria ou associa por email).
+   */
+  async ensureClerkUser(clerkUserId: string): Promise<UserPayload> {
+    const existing = await this.prisma.user.findUnique({
+      where: { clerkId: clerkUserId },
+      select: { id: true, email: true, name: true },
     });
-
-    if (existingUser) {
-      throw new ConflictException('Email já cadastrado');
+    if (existing) {
+      return existing;
     }
 
-    // Hash da senha
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const secretKey = this.config.get<string>('CLERK_SECRET_KEY');
+    if (!secretKey) {
+      throw new UnauthorizedException('CLERK_SECRET_KEY não configurada');
+    }
 
-    // Criar usuário
-    const user = await this.prisma.user.create({
+    const client = createClerkClient({ secretKey });
+    const cu = await client.users.getUser(clerkUserId);
+
+    const primaryId = cu.primaryEmailAddressId;
+    const primary = cu.emailAddresses.find((e) => e.id === primaryId);
+    const email = primary?.emailAddress ?? cu.emailAddresses[0]?.emailAddress;
+    if (!email) {
+      throw new UnauthorizedException('Conta Clerk sem email');
+    }
+
+    const name =
+      [cu.firstName, cu.lastName].filter(Boolean).join(' ').trim() ||
+      cu.username ||
+      email.split('@')[0];
+
+    const byEmail = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, name: true, clerkId: true },
+    });
+
+    if (byEmail) {
+      if (byEmail.clerkId && byEmail.clerkId !== clerkUserId) {
+        throw new UnauthorizedException('Email já vinculado a outra conta');
+      }
+      if (!byEmail.clerkId) {
+        await this.prisma.user.update({
+          where: { id: byEmail.id },
+          data: { clerkId: clerkUserId, name },
+        });
+        return { id: byEmail.id, email: byEmail.email, name };
+      }
+      return { id: byEmail.id, email: byEmail.email, name: byEmail.name };
+    }
+
+    const created = await this.prisma.user.create({
       data: {
         email,
         name,
-        password: hashedPassword,
+        clerkId: clerkUserId,
+        password: null,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-      },
+      select: { id: true, email: true, name: true },
     });
 
-    // Gerar token JWT
-    const token = this.generateToken(user.id);
-
-    return {
-      user,
-      token,
-    };
-  }
-
-  async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
-
-    // Buscar usuário
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
-
-    // Verificar senha
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
-
-    // Gerar token JWT
-    const token = this.generateToken(user.id);
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt,
-      },
-      token,
-    };
-  }
-
-  async validateUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-      },
-    });
-
-    return user;
-  }
-
-  private generateToken(userId: string): string {
-    const payload = { sub: userId };
-    return this.jwtService.sign(payload);
+    return created;
   }
 }
