@@ -3,4 +3,4 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 npx prisma migrate deploy
-exec node dist/main.js
+exec node dist/src/main.js
