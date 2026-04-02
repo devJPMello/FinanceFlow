@@ -31,10 +31,11 @@ import {
   formatMonthKeyPt,
 } from '../lib/periodContext';
 import { getApiErrorWithRequestId } from '../lib/apiErrors';
+import { TransactionsTableSkeleton } from '../components/LoadingSkeletons';
 
 /** Cartões da página (importação, filtros, lista) — mesma hierarquia visual */
 const TX_PAGE_CARD =
-  'rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-[#F9FAFB] p-6 shadow-md shadow-gray-900/[0.04]';
+  'rounded-2xl border border-gray-200/70 bg-gradient-to-br from-white via-slate-50/25 to-slate-50/70 p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
 
 type TxListDensity = 'comfortable' | 'compact';
 
@@ -74,6 +75,15 @@ export default function Transactions() {
     Array<{ id: string; name: string; filters: typeof filters; search: string }>
   >([]);
   const detailsRef = useRef<HTMLDetailsElement | null>(null);
+
+  const openImportSection = useCallback(() => {
+    const el = detailsRef.current;
+    if (!el) return;
+    el.open = true;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchCategoryId, setBatchCategoryId] = useState('');
   const [batchDeductible, setBatchDeductible] = useState<'unset' | 'true' | 'false'>('unset');
@@ -542,6 +552,8 @@ export default function Transactions() {
   const thCheck = listDensity === 'compact' ? 'py-2 px-2' : 'py-4 px-2';
   const descText = listDensity === 'compact' ? 'text-xs' : 'text-sm';
   const amtText = listDensity === 'compact' ? 'text-sm' : 'text-base';
+  const thSticky =
+    'sticky top-0 z-20 bg-slate-50/95 backdrop-blur-sm shadow-[0_1px_0_0_rgb(229_231_235)]';
 
   const importFileAccept =
     '.csv,text/csv,application/csv,.pdf,application/pdf,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif';
@@ -555,11 +567,11 @@ export default function Transactions() {
 
       <details
         ref={detailsRef}
-        className={`group ${TX_PAGE_CARD} open:shadow-lg open:shadow-gray-900/[0.06] transition-shadow duration-200`}
+        className={`group ${TX_PAGE_CARD} open:border-amber-200/60 transition-[border-color,box-shadow] duration-200`}
       >
         <summary className="flex cursor-pointer list-none items-center gap-3 py-0.5 [&::-webkit-details-marker]:hidden">
-          <div className="p-2.5 bg-green-100 rounded-xl shrink-0">
-            <Upload className="w-5 h-5 text-[#16A34A]" />
+          <div className="p-2.5 bg-amber-100 rounded-xl shrink-0 border border-amber-200/60">
+            <Upload className="w-5 h-5 text-amber-700" />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-gray-900">TaxVision · importação (IA)</h2>
@@ -705,7 +717,7 @@ export default function Transactions() {
       </details>
 
       {isValidMonthKey(monthQuery) && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 text-sm text-gray-800 flex flex-wrap items-center justify-between gap-3">
+        <div className="rounded-xl border border-indigo-200/80 bg-indigo-50/70 px-4 py-3 text-sm text-gray-800 flex flex-wrap items-center justify-between gap-3">
           <p>
             Período alinhado ao <strong className="text-gray-900">dashboard</strong>:{' '}
             <strong>{formatMonthKeyPt(monthQuery)}</strong>{' '}
@@ -725,8 +737,8 @@ export default function Transactions() {
       <div className={TX_PAGE_CARD}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg mr-3">
-              <Filter className="w-5 h-5 text-[#16A34A]" />
+            <div className="p-2 bg-indigo-50 rounded-lg mr-3 border border-indigo-100/80">
+              <Filter className="w-5 h-5 text-indigo-600" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">Filtros</h2>
@@ -901,7 +913,7 @@ export default function Transactions() {
 
         <p className="mt-4 text-xs text-gray-500">
           Previsão de despesas em{' '}
-          <Link to="/categories" className="font-semibold text-[#16A34A] hover:underline">
+          <Link to="/categories" className="font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">
             Categorias
           </Link>
           .
@@ -913,7 +925,7 @@ export default function Transactions() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-xl font-bold text-gray-900">Lançamentos</h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 tabular-nums ff-tabular-nums">
               {loading
                 ? 'A carregar...'
                 : `${pagination.total} transação(ões) • saldo geral ${
@@ -934,7 +946,7 @@ export default function Transactions() {
                 onClick={() => setListDensity('comfortable')}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                   listDensity === 'comfortable'
-                    ? 'bg-[#16A34A] text-white shadow-sm'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -945,7 +957,7 @@ export default function Transactions() {
                 onClick={() => setListDensity('compact')}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                   listDensity === 'compact'
-                    ? 'bg-[#16A34A] text-white shadow-sm'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -964,28 +976,45 @@ export default function Transactions() {
         </div>
         <div className="rounded-xl border border-gray-100 bg-gray-50">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <svg className="animate-spin h-8 w-8 text-[#16A34A] mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p className="text-gray-500">Carregando transações...</p>
+          <div className="p-2 sm:p-3">
+            <TransactionsTableSkeleton rows={10} />
+            <p className="text-center text-xs text-gray-500 mt-4">A carregar lançamentos…</p>
           </div>
         ) : transactions.length === 0 ? (
-          <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-12">
-            <div className="flex flex-col items-center justify-center py-10">
-              <div className="w-20 h-20 bg-white border border-gray-200 rounded-full flex items-center justify-center mb-4">
-                <Receipt className="w-10 h-10 text-gray-400" />
+          <div className="rounded-xl border border-gray-200/80 bg-gradient-to-b from-slate-50/50 to-white px-4 py-12">
+            <div className="flex flex-col items-center justify-center py-6 max-w-md mx-auto text-center">
+              <div className="relative w-32 h-28 mb-5 text-indigo-100" aria-hidden>
+                <svg viewBox="0 0 128 112" className="w-full h-full drop-shadow-sm">
+                  <rect x="8" y="12" width="112" height="88" rx="12" fill="currentColor" className="text-indigo-100" />
+                  <rect x="20" y="28" width="72" height="8" rx="4" fill="#c7d2fe" opacity="0.9" />
+                  <rect x="20" y="44" width="56" height="8" rx="4" fill="#e0e7ff" opacity="0.95" />
+                  <rect x="20" y="60" width="64" height="8" rx="4" fill="#e0e7ff" opacity="0.85" />
+                  <circle cx="96" cy="72" r="18" fill="#818cf8" opacity="0.35" />
+                </svg>
+                <Receipt className="w-11 h-11 text-indigo-500 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[40%]" />
               </div>
-              <p className="text-lg font-semibold text-gray-900 mb-2">Nenhuma transação encontrada</p>
-              <p className="text-sm text-gray-600 mb-6">Comece adicionando sua primeira transação</p>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="btn-primary flex items-center justify-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Adicionar Transação</span>
-              </button>
+              <p className="text-lg font-semibold text-gray-900 mb-2">Ainda não há lançamentos</p>
+              <p className="text-sm text-gray-600 mb-6">
+                Importe um extrato com IA ou registe uma transação manualmente.
+              </p>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto sm:justify-center">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(true)}
+                  className="btn-primary flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-5 h-5 shrink-0" />
+                  <span>Nova transação</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={openImportSection}
+                  className="btn-secondary flex items-center justify-center gap-2 border-indigo-200/80 text-indigo-800 hover:bg-indigo-50/80"
+                >
+                  <Upload className="w-5 h-5 shrink-0" />
+                  <span>Importar extrato</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : filteredTransactions.length === 0 ? (
@@ -1003,11 +1032,11 @@ export default function Transactions() {
           </div>
         ) : (
           <>
-          <div className="hidden md:block overflow-x-auto custom-scrollbar">
-            <table className="w-full">
+          <div className="hidden md:block max-h-[min(70vh,720px)] overflow-auto custom-scrollbar rounded-xl border border-gray-200/80 bg-white">
+            <table className="w-full min-w-[720px]">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
-                  <th className={`w-10 ${thCheck} text-center`}>
+                <tr className="border-b border-gray-200">
+                  <th className={`w-10 ${thCheck} text-center ${thSticky}`}>
                     <button
                       type="button"
                       aria-label="Selecionar página"
@@ -1023,41 +1052,41 @@ export default function Transactions() {
                     </button>
                   </th>
                   <th
-                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider cursor-pointer hover:bg-gray-100/80 transition-colors`}
+                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider cursor-pointer hover:bg-slate-100/90 transition-colors ${thSticky}`}
                     onClick={() => handleSort('date')}
                   >
                     Data <SortIcon field="date" />
                   </th>
                   <th
-                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider cursor-pointer hover:bg-gray-100/80 transition-colors`}
+                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider cursor-pointer hover:bg-slate-100/90 transition-colors ${thSticky}`}
                     onClick={() => handleSort('description')}
                   >
                     Descrição <SortIcon field="description" />
                   </th>
                   <th
-                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider`}
+                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider ${thSticky}`}
                   >
                     Categoria
                   </th>
                   <th
-                    className={`text-center ${thCheck} font-semibold text-gray-700 ${thText} uppercase tracking-wider w-12`}
+                    className={`text-center ${thCheck} font-semibold text-gray-700 ${thText} uppercase tracking-wider w-12 ${thSticky}`}
                     title="Anexos"
                   >
                     <Paperclip className="w-4 h-4 inline text-gray-500" />
                   </th>
                   <th
-                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider`}
+                    className={`text-left ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider ${thSticky}`}
                   >
                     Tipo
                   </th>
                   <th
-                    className={`text-right ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider cursor-pointer hover:bg-gray-100/80 transition-colors`}
+                    className={`text-right ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider cursor-pointer hover:bg-slate-100/90 transition-colors ${thSticky}`}
                     onClick={() => handleSort('amount')}
                   >
                     Valor <SortIcon field="amount" />
                   </th>
                   <th
-                    className={`text-right ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider`}
+                    className={`text-right ${thPad} font-semibold text-gray-700 ${thText} uppercase tracking-wider ${thSticky}`}
                   >
                     Ações
                   </th>
@@ -1085,7 +1114,7 @@ export default function Transactions() {
                     return (
                       <tr
                         key={transaction.id}
-                        className={`${zebra} hover:bg-emerald-50/40 transition-colors group`}
+                        className={`${zebra} hover:bg-indigo-50/45 transition-colors group`}
                       >
                         <td className={`${thCheck} text-center`}>
                           <input
@@ -1175,7 +1204,7 @@ export default function Transactions() {
                           </span>
                         </td>
                         <td
-                          className={`${tdPad} text-right font-bold ${amtText} ${
+                          className={`${tdPad} text-right font-bold tabular-nums ff-tabular-nums ${amtText} ${
                             transaction.type === TransactionType.INCOME
                               ? 'text-[#22C55E]'
                               : 'text-[#EF4444]'
@@ -1188,7 +1217,7 @@ export default function Transactions() {
                           <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleEdit(transaction)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                               title="Editar"
                             >
                               <Edit className="w-4 h-4" />
@@ -1273,7 +1302,7 @@ export default function Transactions() {
                       {transaction.type === TransactionType.INCOME ? 'Receita' : 'Despesa'}
                     </span>
                     <p
-                      className={`text-base font-bold tabular-nums mt-1 ${
+                      className={`text-base font-bold tabular-nums ff-tabular-nums mt-1 ${
                         transaction.type === TransactionType.INCOME ? 'text-[#22C55E]' : 'text-[#EF4444]'
                       }`}
                     >

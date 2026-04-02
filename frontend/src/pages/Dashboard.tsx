@@ -162,28 +162,27 @@ export default function Dashboard() {
         </div>
 
         {/* Skeleton Loading */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card-gradient animate-pulse">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-24 mb-3"></div>
-                  <div className="h-8 bg-gray-200 rounded w-32 mb-3"></div>
-                  <div className="h-6 bg-gray-200 rounded w-20"></div>
-                </div>
-                <div className="w-16 h-16 bg-gray-200 rounded-2xl"></div>
-              </div>
+            <div key={i} className="card-gradient animate-pulse p-4">
+              <div className="h-3 bg-gray-200 rounded w-20 mb-3" />
+              <div className="h-7 bg-gray-200 rounded w-28 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-16" />
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
-            <div key={i} className="card-gradient animate-pulse">
-              <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 card-gradient animate-pulse">
+            <div className="h-5 bg-gray-200 rounded w-56 mb-2" />
+            <div className="h-4 bg-gray-100 rounded w-40 mb-6" />
+            <div className="h-[min(22rem,55vw)] bg-gray-100 rounded-xl" />
+          </div>
+          <div className="card-gradient animate-pulse">
+            <div className="h-5 bg-gray-200 rounded w-40 mb-2" />
+            <div className="h-4 bg-gray-100 rounded w-32 mb-4" />
+            <div className="h-52 bg-gray-100 rounded-xl" />
+          </div>
         </div>
       </div>
     );
@@ -250,7 +249,7 @@ export default function Dashboard() {
             )}
             <Link
               to={`/transactions?month=${encodeURIComponent(focusMonthKey)}`}
-              className="text-xs font-semibold text-[#16A34A] hover:underline shrink-0"
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline shrink-0"
             >
               Ver transações deste período →
             </Link>
@@ -265,20 +264,28 @@ export default function Dashboard() {
             {monthVariationLabel}
           </span>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Saldo</p>
-            <p className={`text-2xl font-bold ${isPositive ? 'text-[#16A34A]' : 'text-[#EF4444]'}`}>
+        <div className="rounded-xl border border-gray-100/90 bg-slate-50/60 p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="rounded-lg border border-transparent bg-white/60 px-3 py-2.5">
+            <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-semibold">Saldo</p>
+            <p
+              className={`text-lg sm:text-xl font-bold tabular-nums ff-tabular-nums tracking-tight ${
+                isPositive ? 'text-[#16A34A]' : 'text-[#EF4444]'
+              }`}
+            >
               {formatCurrency(monthSummary?.balance ?? 0)}
             </p>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Receitas</p>
-            <p className="text-2xl font-bold text-[#16A34A]">{formatCurrency(monthSummary?.totalIncome ?? 0)}</p>
+          <div className="rounded-lg border border-transparent bg-white/60 px-3 py-2.5">
+            <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-semibold">Receitas</p>
+            <p className="text-lg sm:text-xl font-bold text-[#16A34A] tabular-nums ff-tabular-nums tracking-tight">
+              {formatCurrency(monthSummary?.totalIncome ?? 0)}
+            </p>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Despesas</p>
-            <p className="text-2xl font-bold text-[#EF4444]">{formatCurrency(monthSummary?.totalExpense ?? 0)}</p>
+          <div className="rounded-lg border border-transparent bg-white/60 px-3 py-2.5">
+            <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-semibold">Despesas</p>
+            <p className="text-lg sm:text-xl font-bold text-[#EF4444] tabular-nums ff-tabular-nums tracking-tight">
+              {formatCurrency(monthSummary?.totalExpense ?? 0)}
+            </p>
           </div>
         </div>
       </div>
@@ -353,7 +360,7 @@ export default function Dashboard() {
           </div>
           <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden mb-4">
             <div
-              className="h-full bg-[#16A34A] transition-all"
+              className="h-full bg-indigo-600 transition-all"
               style={{ width: `${monthlyClosing.percent}%` }}
             />
           </div>
@@ -414,16 +421,16 @@ export default function Dashboard() {
       ) : (
         <>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card-gradient">
-          <div className="mb-6">
+      {/* Gráficos — barras em destaque; pizza como complemento */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 card-gradient border border-gray-200/70">
+          <div className="mb-5">
             <h2 className="text-xl font-bold text-gray-900 mb-1">
-              Receitas e Despesas Mensais
+              Receitas e despesas mensais
             </h2>
-            <p className="text-sm text-gray-600">Comparativo mensal do ano</p>
+            <p className="text-sm text-gray-600">Visão principal do ano — comparativo mês a mês</p>
           </div>
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={360}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis 
@@ -462,17 +469,18 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="card-gradient">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">
-              Despesas por Categoria
-            </h2>
-            <p className="text-sm text-gray-600">Distribuição dos gastos</p>
+        <div className="card-gradient border border-dashed border-gray-200/90 bg-gradient-to-b from-slate-50/30 to-white/80">
+          <div className="mb-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+              Complementar
+            </p>
+            <h2 className="text-base font-bold text-gray-800 mb-0.5">Despesas por categoria</h2>
+            <p className="text-xs text-gray-500">Distribuição relativa dos gastos</p>
           </div>
           {extrasLoading ? (
-            <div className="h-80 rounded-xl bg-gray-100 animate-pulse" />
+            <div className="h-56 rounded-xl bg-gray-100/80 animate-pulse" />
           ) : categoryStats.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={categoryStats}
@@ -480,7 +488,7 @@ export default function Dashboard() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={100}
+                  outerRadius={78}
                   label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                   labelLine={false}
                 >
@@ -491,19 +499,20 @@ export default function Dashboard() {
                     />
                   ))}
                 </Pie>
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e5e7eb',
                     borderRadius: '12px',
-                    padding: '12px',
+                    padding: '10px',
+                    fontVariantNumeric: 'tabular-nums',
                   }}
                 />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-52 text-gray-500">
               <Receipt className="w-16 h-16 mb-4 opacity-50" />
               <p className="text-lg font-medium">Nenhuma categoria encontrada</p>
               <p className="text-sm mt-1">Adicione transações para ver os dados</p>

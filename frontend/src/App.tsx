@@ -72,7 +72,46 @@ function App() {
     <ErrorBoundary>
       <Router>
         <ClerkApiBridge>
-          <Toaster position="top-right" />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                borderRadius: '12px',
+                padding: '12px 16px',
+                fontSize: '14px',
+                fontWeight: 500,
+                maxWidth: '22rem',
+                boxShadow: '0 10px 40px -12px rgba(15, 23, 42, 0.15)',
+              },
+              success: {
+                duration: 3500,
+                iconTheme: { primary: '#059669', secondary: '#ffffff' },
+                style: {
+                  background: '#ecfdf5',
+                  color: '#065f46',
+                  border: '1px solid #a7f3d0',
+                },
+              },
+              error: {
+                duration: 5000,
+                iconTheme: { primary: '#dc2626', secondary: '#ffffff' },
+                style: {
+                  background: '#fef2f2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                },
+              },
+              loading: {
+                iconTheme: { primary: '#4f46e5', secondary: '#ffffff' },
+                style: {
+                  background: '#eef2ff',
+                  color: '#3730a3',
+                  border: '1px solid #c7d2fe',
+                },
+              },
+            }}
+          />
           <Routes>
             <Route
               path="/sign-in/*"

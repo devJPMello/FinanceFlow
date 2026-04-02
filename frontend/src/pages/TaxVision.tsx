@@ -292,7 +292,8 @@ export default function TaxVision() {
   }, [year, loading, loadChecklist, loadClassification, loadTimeline]);
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-5xl">
+    <div className="max-w-5xl rounded-2xl border border-amber-200/50 bg-gradient-to-b from-amber-50/40 via-white to-white px-3 py-5 sm:px-5 sm:py-7 shadow-[0_1px_2px_rgba(180,83,9,0.06)]">
+    <div className="space-y-8 animate-fade-in">
       <div>
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 border border-amber-200/80">
@@ -661,6 +662,7 @@ export default function TaxVision() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

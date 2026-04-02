@@ -34,6 +34,12 @@ export default function CommandPalette() {
   }, []);
 
   useEffect(() => {
+    const open = () => setOpen(true);
+    window.addEventListener('ff-open-command-palette', open);
+    return () => window.removeEventListener('ff-open-command-palette', open);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
@@ -126,7 +132,9 @@ export default function CommandPalette() {
       .slice(0, 25);
   }, [items, query]);
 
-  if (!open) return null;
+  const isMac =
+    typeof navigator !== 'undefined' &&
+    /Mac|iPhone|iPod|iPad/i.test(navigator.platform || navigator.userAgent || '');
 
   const icon = (type: PaletteItem['type']) => {
     if (type === 'transaction') return <Receipt className="w-4 h-4" />;
@@ -136,55 +144,95 @@ export default function CommandPalette() {
   };
 
   return (
-    <div className="fixed inset-0 z-[80]">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={() => setOpen(false)}
-      />
-      <div className="absolute left-1/2 top-[12%] -translate-x-1/2 w-[92vw] max-w-2xl card-gradient p-0 overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-          <Search className="w-4 h-4 text-gray-400" />
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar transações, categorias, metas, anexos..."
-            className="flex-1 bg-transparent outline-none text-sm text-gray-800"
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex fixed bottom-5 right-4 sm:bottom-6 sm:right-6 lg:right-8 z-[70] items-center gap-2 rounded-full border border-gray-200/90 bg-white/95 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-gray-700 shadow-[0_1px_2px_rgba(15,23,42,0.06)] backdrop-blur-sm hover:border-indigo-200 hover:text-indigo-800 transition-colors max-w-[calc(100vw-2rem)]"
+        aria-label="Abrir busca rápida"
+      >
+        <Search className="w-3.5 h-3.5 text-gray-500" />
+        <span>Buscar</span>
+        <kbd className="rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-mono text-[10px] text-gray-600 tabular-nums">
+          {isMac ? '⌘' : 'Ctrl'} K
+        </kbd>
+      </button>
+
+      {open ? (
+        <div className="fixed inset-0 z-[80]">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+            aria-hidden
           />
-          <button className="p-1 rounded hover:bg-gray-100" onClick={() => setOpen(false)}>
-            <X className="w-4 h-4 text-gray-500" />
-          </button>
-        </div>
-        <div className="max-h-[60vh] overflow-auto custom-scrollbar p-2">
-          {loading ? (
-            <p className="text-sm text-gray-500 px-2 py-6">Carregando índice...</p>
-          ) : filtered.length === 0 ? (
-            <p className="text-sm text-gray-500 px-2 py-6">Sem resultados.</p>
-          ) : (
-            filtered.map((item) => (
+          <div className="absolute left-1/2 top-[12%] -translate-x-1/2 w-[92vw] max-w-2xl card-gradient p-0 overflow-hidden border border-gray-200/80">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Buscar transações, categorias, metas, anexos..."
+                className="flex-1 bg-transparent outline-none text-sm text-gray-800"
+              />
               <button
-                key={item.id}
-                onClick={item.action}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 flex items-start gap-3"
+                type="button"
+                className="p-1 rounded hover:bg-gray-100"
+                onClick={() => setOpen(false)}
+                aria-label="Fechar"
               >
-                <span className="mt-0.5 text-gray-500">{icon(item.type)}</span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-gray-900 truncate">
-                    {item.label}
-                  </span>
-                  <span className="block text-xs text-gray-500 truncate">
-                    {item.sublabel}
-                  </span>
-                </span>
+                <X className="w-4 h-4 text-gray-500" />
               </button>
-            ))
-          )}
+            </div>
+            <div className="max-h-[60vh] overflow-auto custom-scrollbar p-2">
+              {loading ? (
+                <div className="px-2 py-3 space-y-2" aria-busy>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 rounded-lg px-3 py-2.5 animate-pulse"
+                    >
+                      <div className="mt-0.5 h-4 w-4 rounded bg-gray-200 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3.5 bg-gray-200 rounded w-4/5" />
+                        <div className="h-3 bg-gray-100 rounded w-3/5" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <p className="text-sm text-gray-500 px-2 py-6">Sem resultados.</p>
+              ) : (
+                filtered.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.action}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50/60 flex items-start gap-3 transition-colors"
+                  >
+                    <span className="mt-0.5 text-indigo-600/80">{icon(item.type)}</span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-gray-900 truncate">
+                        {item.label}
+                      </span>
+                      <span className="block text-xs text-gray-500 truncate">
+                        {item.sublabel}
+                      </span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-500 flex items-center justify-between gap-2">
+              <span>Fechar · Esc</span>
+              <span className="tabular-nums">
+                Atalho: {isMac ? '⌘' : 'Ctrl'}+K
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-500">
-          Atalho: Ctrl/Cmd + K
-        </div>
-      </div>
-    </div>
+      ) : null}
+    </>
   );
 }
 

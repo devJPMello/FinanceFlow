@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
 import {
   LayoutDashboard,
@@ -13,8 +13,17 @@ import {
 import { useState } from 'react';
 import CommandPalette from './CommandPalette';
 
+const navCoreActive =
+  'bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 font-semibold border border-indigo-200/80 shadow-[0_1px_2px_rgba(79,70,229,0.08)]';
+const navCoreInactive = 'text-[#111827] hover:bg-slate-50';
+const navTaxActive =
+  'bg-gradient-to-r from-amber-50 to-amber-100/90 text-amber-900 font-semibold border border-amber-200/90 shadow-[0_1px_2px_rgba(180,83,9,0.08)]';
+const navTaxInactive = 'text-[#111827] hover:bg-amber-50/50';
+
 export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const isTaxVision = location.pathname.startsWith('/tax-vision');
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -25,7 +34,13 @@ export default function Layout() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div
+      className={`min-h-screen bg-gradient-to-br transition-colors duration-300 ${
+        isTaxVision
+          ? 'from-amber-50/35 via-white to-slate-50'
+          : 'from-slate-50 via-white to-zinc-50/90'
+      }`}
+    >
       <CommandPalette />
       <button
         onClick={() => setMobileMenuOpen(true)}
@@ -57,7 +72,7 @@ export default function Layout() {
                       if (fallback) fallback.style.display = 'flex';
                     }}
                   />
-                  <div className="w-32 h-32 bg-[#16A34A] rounded-xl flex items-center justify-center mr-3 shadow-lg hidden">
+                  <div className="w-32 h-32 bg-indigo-600 rounded-xl flex items-center justify-center mr-3 shadow-sm hidden">
                     <Wallet className="w-16 h-16 text-white" />
                   </div>
                 </div>
@@ -73,6 +88,7 @@ export default function Layout() {
               <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
                 {navigation.map((item) => {
                   const Icon = item.icon;
+                  const isTax = item.href === '/tax-vision';
                   return (
                     <NavLink
                       key={item.name}
@@ -81,8 +97,12 @@ export default function Layout() {
                       className={({ isActive }) =>
                         `flex items-center px-4 py-3 rounded-xl transition-all duration-200 ${
                           isActive
-                            ? 'bg-gradient-to-r from-green-50 to-green-100 text-[#16A34A] font-semibold shadow-sm border border-green-200'
-                            : 'text-[#111827] hover:bg-gray-50'
+                            ? isTax
+                              ? navTaxActive
+                              : navCoreActive
+                            : isTax
+                              ? navTaxInactive
+                              : navCoreInactive
                         }`
                       }
                     >
@@ -108,7 +128,13 @@ export default function Layout() {
         </>
       )}
 
-      <aside className="hidden lg:block fixed inset-y-0 left-0 w-72 bg-white/80 backdrop-blur-xl border-r border-gray-200/50 shadow-sm z-30">
+      <aside
+        className={`hidden lg:block fixed inset-y-0 left-0 w-72 backdrop-blur-xl border-r z-30 shadow-[0_1px_0_rgba(15,23,42,0.04)] ${
+          isTaxVision
+            ? 'bg-amber-50/40 border-amber-100/70'
+            : 'bg-white/85 border-gray-200/50'
+        }`}
+      >
         <div className="flex flex-col h-full">
           <div className="flex items-center h-20 px-6 border-b border-gray-100">
             <div className="flex items-center">
@@ -123,7 +149,7 @@ export default function Layout() {
                   if (fallback) fallback.style.display = 'flex';
                 }}
               />
-              <div className="w-32 h-32 bg-[#16A34A] rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-[#16A34A]/30 hidden">
+              <div className="w-32 h-32 bg-indigo-600 rounded-xl flex items-center justify-center mr-3 shadow-sm hidden">
                 <Wallet className="w-16 h-16 text-white" />
               </div>
             </div>
@@ -132,6 +158,7 @@ export default function Layout() {
           <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
             {navigation.map((item) => {
               const Icon = item.icon;
+              const isTax = item.href === '/tax-vision';
               return (
                 <NavLink
                   key={item.name}
@@ -139,8 +166,12 @@ export default function Layout() {
                   className={({ isActive }) =>
                     `flex items-center px-4 py-3 rounded-xl transition-all duration-200 group ${
                       isActive
-                        ? 'bg-gradient-to-r from-green-50 to-green-100 text-[#16A34A] font-semibold shadow-sm border border-green-200'
-                        : 'text-[#111827] hover:bg-gray-50'
+                        ? isTax
+                          ? navTaxActive
+                          : navCoreActive
+                        : isTax
+                          ? navTaxInactive
+                          : navCoreInactive
                     }`
                   }
                 >
