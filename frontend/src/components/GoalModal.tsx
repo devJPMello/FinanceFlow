@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import api from '../lib/api';
@@ -16,8 +16,11 @@ interface GoalModalProps {
 export default function GoalModal({ goal, onClose, onSave }: GoalModalProps) {
   const [loading, setLoading] = useState(false);
 
-  const defaultDate = new Date();
-  defaultDate.setMonth(defaultDate.getMonth() + 1);
+  const defaultDate = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d;
+  }, []);
 
   const {
     register,
@@ -50,7 +53,7 @@ export default function GoalModal({ goal, onClose, onSave }: GoalModalProps) {
         description: '',
       });
     }
-  }, [goal, reset]);
+  }, [goal, reset, defaultDate]);
 
   const onSubmit = async (data: GoalFormData) => {
     setLoading(true);

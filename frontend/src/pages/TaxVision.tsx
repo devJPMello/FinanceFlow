@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../lib/api';
 import type {
   TaxVisionSummary,
@@ -87,7 +87,7 @@ export default function TaxVision() {
     }
   };
 
-  const loadChecklist = async () => {
+  const loadChecklist = useCallback(async () => {
     try {
       setChecklistLoading(true);
       const { data } = await api.get<{ year: number; items: TaxChecklistItem[] }>(
@@ -100,9 +100,9 @@ export default function TaxVision() {
     } finally {
       setChecklistLoading(false);
     }
-  };
+  }, [year]);
 
-  const loadClassification = async () => {
+  const loadClassification = useCallback(async () => {
     try {
       setClassificationLoading(true);
       const { data } = await api.get<{
@@ -116,9 +116,9 @@ export default function TaxVision() {
     } finally {
       setClassificationLoading(false);
     }
-  };
+  }, [year]);
 
-  const loadTimeline = async () => {
+  const loadTimeline = useCallback(async () => {
     try {
       setTimelineLoading(true);
       const { data } = await api.get<{ timeline: TaxDocumentTimelineItem[] }>(
@@ -131,7 +131,7 @@ export default function TaxVision() {
     } finally {
       setTimelineLoading(false);
     }
-  };
+  }, [year]);
 
   const dismissClassification = async (transactionId: string) => {
     try {
@@ -285,11 +285,11 @@ export default function TaxVision() {
 
   useEffect(() => {
     if (!loading) {
-      loadChecklist();
-      loadClassification();
-      loadTimeline();
+      void loadChecklist();
+      void loadClassification();
+      void loadTimeline();
     }
-  }, [year, loading]);
+  }, [year, loading, loadChecklist, loadClassification, loadTimeline]);
 
   return (
     <div className="space-y-8 animate-fade-in max-w-5xl">

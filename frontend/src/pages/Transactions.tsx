@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../lib/api';
 import { Transaction, TransactionType, Category } from '../types';
@@ -108,32 +108,7 @@ export default function Transactions() {
     });
   }, [monthQuery]);
 
-  useEffect(() => {
-    loadTransactions();
-  }, [filters]);
-
-  const fetchGlobalBalance = async () => {
-    try {
-      const { data } = await api.get<{ balance: number }>('/transactions/balance');
-      setGlobalBalance(typeof data?.balance === 'number' ? data.balance : null);
-    } catch {
-      setGlobalBalance(null);
-    }
-  };
-
-  useEffect(() => {
-    loadCategories();
-    fetchGlobalBalance();
-    try {
-      const raw = localStorage.getItem('ff-saved-transaction-filters');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setSavedFilters(parsed);
-      }
-    } catch {}
-  }, []);
-
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string | number> = {
@@ -180,9 +155,22 @@ export default function Transactions() {
     } finally {
       setLoading(false);
     }
+  }, [filters]);
+
+  useEffect(() => {
+    void loadTransactions();
+  }, [filters, loadTransactions]);
+
+  const fetchGlobalBalance = async () => {
+    try {
+      const { data } = await api.get<{ balance: number }>('/transactions/balance');
+      setGlobalBalance(typeof data?.balance === 'number' ? data.balance : null);
+    } catch {
+      setGlobalBalance(null);
+    }
   };
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const response = await api.get('/categories');
       // Suportar resposta paginada ou array direto
@@ -192,7 +180,21 @@ export default function Transactions() {
       console.error('Erro ao carregar categorias:', error);
       setCategories([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadCategories();
+    void fetchGlobalBalance();
+    try {
+      const raw = localStorage.getItem('ff-saved-transaction-filters');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setSavedFilters(parsed);
+      }
+    } catch {
+      /* ignore invalid saved filters in localStorage */
+    }
+  }, [loadCategories]);
 
   const handleDelete = async (id: string) => {
     try {

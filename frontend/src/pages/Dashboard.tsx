@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import {
@@ -61,11 +61,7 @@ export default function Dashboard() {
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const focusMonthKey = dashboardFocusMonth(selectedYear);
 
-  useEffect(() => {
-    void loadDashboardData();
-  }, [selectedYear]);
-
-  const loadDashboardData = async (options?: { isRefresh?: boolean }) => {
+  const loadDashboardData = useCallback(async (options?: { isRefresh?: boolean }) => {
     const isRefresh = options?.isRefresh ?? false;
     const firstPaint = !initialLoadDone.current;
     try {
@@ -129,7 +125,11 @@ export default function Dashboard() {
       setExtrasLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedYear]);
+
+  useEffect(() => {
+    void loadDashboardData();
+  }, [loadDashboardData]);
 
   if (error && !loading) {
     return (
