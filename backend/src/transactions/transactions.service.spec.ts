@@ -1,12 +1,37 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { TransactionsService } from './transactions.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiInsightsService } from '../ai-insights/ai-insights.service';
+import { AuditService } from '../common/services/audit.service';
+import { AttachmentScannerService } from './attachment-scanner.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { ATTACHMENT_MAX_FILE_BYTES } from '../common/constants/upload-limits';
+
+jest.mock('fs/promises', () => ({
+  mkdir: jest.fn(() => Promise.resolve()),
+  writeFile: jest.fn(() => Promise.resolve()),
+}));
 
 describe('TransactionsService', () => {
   let service: TransactionsService;
-  let prismaService: PrismaService;
+
+  const mockAiInsightsService = {
+    extractBankTransactionsFromMedia: jest.fn(),
+  };
+
+  const mockAuditService = {
+    log: jest.fn(() => Promise.resolve()),
+  };
+
+  const mockAttachmentScanner = {
+    scanOrThrow: jest.fn(() => Promise.resolve()),
+  };
+
+  const mockCacheManager = {
+    reset: jest.fn(() => Promise.resolve()),
+  };
 
   const mockPrismaService = {
     transaction: {
@@ -17,9 +42,13 @@ describe('TransactionsService', () => {
       delete: jest.fn(),
       aggregate: jest.fn(),
       count: jest.fn(),
+      updateMany: jest.fn(),
     },
     category: {
       findUnique: jest.fn(),
+    },
+    transactionAttachment: {
+      create: jest.fn(),
     },
   };
 
@@ -27,15 +56,15 @@ describe('TransactionsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TransactionsService,
-        {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: AiInsightsService, useValue: mockAiInsightsService },
+        { provide: AuditService, useValue: mockAuditService },
+        { provide: AttachmentScannerService, useValue: mockAttachmentScanner },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
       ],
     }).compile();
 
     service = module.get<TransactionsService>(TransactionsService);
-    prismaService = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {
@@ -301,6 +330,73 @@ describe('TransactionsService', () => {
 
       expect(result).toEqual(existingTransaction);
       expect(mockPrismaService.transaction.delete).toHaveBeenCalled();
+    });
+  });
+
+  describe('addAttachment', () => {
+    const userId = 'user-1';
+    const txId = 'tx-1';
+    const pdfMagic = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x0a]);
+
+    const baseFile = {
+      buffer: pdfMagic,
+      size: pdfMagic.length,
+      mimetype: 'application/pdf',
+      originalname: 'doc.pdf',
+    };
+
+    beforeEach(() => {
+      mockPrismaService.transaction.findUnique.mockResolvedValue({
+        id: txId,
+        userId,
+        type: 'EXPENSE',
+        amount: new Decimal(10),
+        category: { id: 'c1', type: 'EXPENSE', userId },
+        _count: { attachments: 0 },
+      });
+      mockPrismaService.transactionAttachment.create.mockResolvedValue({
+        id: 'att-1',
+        fileName: 'doc.pdf',
+        mimeType: 'application/pdf',
+        fileSize: baseFile.size,
+        createdAt: new Date(),
+      });
+    });
+
+    it('rejeita ficheiro vazio', async () => {
+      await expect(
+        service.addAttachment(userId, txId, {
+          ...baseFile,
+          buffer: Buffer.alloc(0),
+          size: 0,
+        } as Express.Multer.File),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejeita ficheiro acima do limite', async () => {
+      await expect(
+        service.addAttachment(userId, txId, {
+          ...baseFile,
+          size: ATTACHMENT_MAX_FILE_BYTES + 1,
+        } as Express.Multer.File),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejeita MIME não permitido', async () => {
+      await expect(
+        service.addAttachment(userId, txId, {
+          ...baseFile,
+          buffer: Buffer.from('ZIP'),
+          mimetype: 'application/zip',
+        } as Express.Multer.File),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('aceita PDF e persiste anexo', async () => {
+      const r = await service.addAttachment(userId, txId, baseFile as Express.Multer.File);
+      expect(r.id).toBe('att-1');
+      expect(mockAttachmentScanner.scanOrThrow).toHaveBeenCalled();
+      expect(mockPrismaService.transactionAttachment.create).toHaveBeenCalled();
     });
   });
 });

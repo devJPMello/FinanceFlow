@@ -7,6 +7,7 @@ import {
   IsOptional,
   MaxLength,
   Min,
+  IsBoolean,
 } from 'class-validator';
 import { TransactionType } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -36,4 +37,18 @@ export class CreateTransactionDto {
   @IsString({ message: 'Categoria é obrigatória' })
   @IsNotEmpty({ message: 'Categoria é obrigatória' })
   categoryId: string;
+
+  @IsBoolean({ message: 'deductiblePotential deve ser booleano' })
+  @IsOptional()
+  deductiblePotential?: boolean;
+
+  @IsString({ message: 'bankMemo deve ser uma string' })
+  @IsOptional()
+  @MaxLength(4000, { message: 'Memória do extrato muito longa' })
+  bankMemo?: string;
+
+  @IsString({ message: 'userNote deve ser uma string' })
+  @IsOptional()
+  @MaxLength(2000, { message: 'Nota muito longa' })
+  userNote?: string;
 }
