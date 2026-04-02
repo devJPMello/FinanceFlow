@@ -128,13 +128,16 @@ Resumo; o detalhe está em **`backend/.env.example`** e **`frontend/.env.example
 - **Feature flags (admin):** `POST /api/feature-flags/:key` exige header `x-admin-operations-secret` igual a `ADMIN_OPERATIONS_SECRET` (gera um segredo longo no painel do host).
 - **IA / custos:** importação de extratos (CSV/PDF/imagem) e OCR TaxVision passam pelas mesmas quotas que o resto (`AI_DAILY_LIMIT_PER_USER`, `AI_BURST_PER_MINUTE_PER_ROUTE`). Limites de tamanho alinham-se a `IMPORT_MAX_FILE_BYTES` / anexos (ver `backend/.env.example`).
 - **Isolamento:** leituras por id usam `userId` na query onde faz sentido; IDs de outros utilizadores respondem **404** (sem revelar que o recurso existe).
-- **`npm audit`:** parte dos avisos vem da cadeia de **dev** (`@nestjs/cli`, eslint); corrigir tudo costuma exigir upgrades major — rever periodicamente.
+- **`npm audit`:** parte dos avisos vem da cadeia de **dev** (`@nestjs/cli`, eslint); `npm audit fix` sem `--force` costuma pouco; mitigar com upgrades major planeados (Nest 11+, ESLint 9) quando fizer sentido.
 
 ---
 
 ## Testes e qualidade
 
 **CI (GitHub Actions):** workflow `.github/workflows/ci.yml` — Jest no backend, Vitest + ESLint + Playwright smoke no front (build + preview). Opcional: secret `VITE_CLERK_PUBLISHABLE_KEY` para build com Clerk real.
+
+**Backend:** `tsconfig.json` com **`strictNullChecks: true`** (validação mais rigorosa no `nest build`).  
+**E2E (Playwright):** além de `/` e `/sign-in`, o smoke percorre `/transactions`, `/dashboard`, `/categories`, `/goals`, `/tax-vision` (sem sessão Clerk — garante que a SPA não rebenta ao mudar de rota). Fluxos autenticados completos podem usar `E2E_CLERK_EMAIL` / `E2E_CLERK_PASSWORD` em local (ver comentário em `tests/e2e/critical-flows.spec.ts`).
 
 ```bash
 # Backend (Jest)

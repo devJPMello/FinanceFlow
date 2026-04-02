@@ -18,4 +18,11 @@ test.describe('Smoke', () => {
     await expect(page.locator('body')).toBeVisible();
     await expect(page).toHaveURL(/sign-in/);
   });
+
+  test('rotas principais da SPA respondem sem crash (sem sessão Clerk)', async ({ page }) => {
+    for (const path of ['/transactions', '/dashboard', '/categories', '/goals', '/tax-vision']) {
+      await page.goto(path);
+      await expect(page.locator('body')).toBeVisible();
+    }
+  });
 });
