@@ -34,6 +34,9 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# Uploads (baú fiscal / anexos)
+/uploads
+
 # Environment
 .env
 .env.local
