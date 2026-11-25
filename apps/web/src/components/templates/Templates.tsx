@@ -13,7 +13,7 @@ export function DashboardTemplate() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const qc = useQueryClient();
-  useEffect(() => { window.scrollTo({ top: 0 }); }, [pathname]);
+  useEffect(() => { window.scrollTo({ top: 0 }); setOpen(false); }, [pathname]);
   // lança as recorrências vencidas ao abrir o app
   useEffect(() => {
     if (!token) return;

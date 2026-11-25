@@ -71,7 +71,7 @@ export function CashflowChart({ data, loading }: { data?: CashflowPoint[]; loadi
           <ResponsiveContainer>
             <BarChart data={rows} barGap={4} margin={{ left: -12, top: 4 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} interval={0} tickFormatter={(v: string) => v.split(' ')[0].replace('.', '')} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={4} tickFormatter={(v: string) => v.split(' ')[0].replace('.', '')} tick={{ fontSize: 12, fill: '#94a3b8' }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} width={48} />
               <Tooltip cursor={{ fill: 'rgb(148 163 184 / .12)' }} formatter={(v: number) => formatMoney(v)} contentStyle={tooltipStyle} />
               <Bar dataKey="income" name="Receitas" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={26} isAnimationActive={false} />

@@ -176,7 +176,7 @@ function ReviewStep({ id, onBack, onDone }: { id: string; onBack: () => void; on
         <div className="surface flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15"><AlertTriangle className="h-5 w-5" /></span><div><p className="text-2xl font-bold">{data.counts.error}</p><p className="text-xs text-slate-500">com erro</p></div></div>
       </div>
 
-      <div className="surface max-h-[30rem] overflow-auto">
+      <div className="surface hidden max-h-[30rem] overflow-auto md:block">
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800">
             <tr><th className="px-3 py-2.5">Importar</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5">Data</th><th className="px-3 py-2.5">Descrição</th><th className="px-3 py-2.5">Categoria</th><th className="px-3 py-2.5 text-right">Valor</th></tr>
@@ -202,6 +202,31 @@ function ReviewStep({ id, onBack, onDone }: { id: string; onBack: () => void; on
           </tbody>
         </table>
       </div>
+      {/* Celular: um cartão por linha, com tudo visível sem rolagem lateral */}
+      <ul className="space-y-2 md:hidden">
+        {data.rows.map((r) => (
+          <li key={r.id} className={clsx('surface space-y-3 p-3', r.skip && 'opacity-50')}>
+            <div className="flex items-start gap-3">
+              <input type="checkbox" className="mt-1 h-4 w-4" aria-label={`Importar linha ${r.index + 1}`} disabled={r.status === 'ERROR'} checked={!r.skip} onChange={(e) => patch.mutate({ rowId: r.id, skip: !e.target.checked })} />
+              <div className="min-w-0 flex-1">
+                <p className="break-words font-medium">{r.description || '—'}</p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  {r.date ? formatDate(r.date) : '—'}
+                  <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                  {r.error && <span className="text-rose-600">{r.error}</span>}
+                </p>
+              </div>
+              <span className="shrink-0 font-semibold">{r.amount != null && r.type && <Money value={r.amount} type={r.type} />}</span>
+            </div>
+            {r.type && (
+              <Select aria-label={`Categoria da linha ${r.index + 1}`} className="!py-2" value={r.categoryId ?? ''} onChange={(e) => patch.mutate({ rowId: r.id, categoryId: e.target.value || null })}>
+                <option value="">Sem categoria</option>
+                {categories.filter((c) => c.kind === r.type).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+            )}
+          </li>
+        ))}
+      </ul>
       <div className="flex justify-between">
         <Button variant="secondary" onClick={onBack}><ArrowLeft className="h-4 w-4" />Voltar</Button>
         <Button size="lg" disabled={toImport === 0} loading={confirm.isPending} onClick={() => confirm.mutate(undefined, { onSuccess: (r) => onDone(r.imported) })}>
