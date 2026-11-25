@@ -30,6 +30,7 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}   # docs em /docs; use false para esconder
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

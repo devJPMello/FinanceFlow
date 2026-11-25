@@ -11,11 +11,14 @@ async function bootstrap() {
   app.use(helmet());
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:5173', credentials: true });
   app.setGlobalPrefix('api');
-  const doc = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder().setTitle('FinanceFlow API').setVersion('0.1').addBearerAuth().build(),
-  );
-  SwaggerModule.setup('docs', app, doc);
+  // Swagger só fora de produção (ou com ENABLE_SWAGGER=true): em produção ele listaria todos os endpoints publicamente
+  if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
+    const doc = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder().setTitle('FinanceFlow API').setVersion('0.1').addBearerAuth().build(),
+    );
+    SwaggerModule.setup('docs', app, doc);
+  }
   await app.listen(Number(process.env.PORT ?? 3000), '0.0.0.0');
 }
 bootstrap();

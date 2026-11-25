@@ -81,6 +81,7 @@ O banco é o Postgres do **Neon**.
    Se mudar `VITE_API_URL`, refaça o deploy do front (a variável entra no build).
 
 Observações:
+- **Swagger (`/docs`) fica desligado em produção** (`NODE_ENV=production`, caso da Render). Para ligar de propósito, defina `ENABLE_SWAGGER=true`.
 - **Nunca commite** a string do banco: ela fica só em `apps/api/.env` (ignorado pelo git) e no painel da Render.
 - No plano gratuito a API "dorme" após 15 min sem uso (o primeiro acesso demora) e o disco é efêmero:
   os **comprovantes anexados são perdidos a cada deploy**. Para mantê-los, use um plano pago com disco
