@@ -64,3 +64,26 @@ O CI (`.github/workflows/ci.yml`) roda lint, build, testes, e2e e build das imag
 `POST /api/auth/forgot-password` envia um link de uso único (válido por 1 h) por e-mail.
 Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `MAIL_FROM`. Sem SMTP, o link é
 apenas escrito no log da API (útil em desenvolvimento).
+
+## Deploy na Render (+ banco no Neon)
+
+O repositório tem um `render.yaml` (Blueprint) com a **API** (Docker) e o **front** (site estático).
+O banco é o Postgres do **Neon**.
+
+1. Suba o projeto para o GitHub (`git remote add origin ... && git push -u origin main`).
+2. Na Render: **New → Blueprint** → escolha o repositório. Ela cria `financeflow-api` e `financeflow-web`.
+3. Preencha as variáveis que o Blueprint pede (`sync: false`):
+   - **API** → `DATABASE_URL`: a connection string do Neon (a do *pooler*, com `sslmode=require`).
+   - **API** → `WEB_ORIGIN`: a URL do front, ex. `https://financeflow-web.onrender.com`.
+   - **Front** → `VITE_API_URL`: a URL da API, ex. `https://financeflow-api.onrender.com` (sem `/` no fim).
+   - Opcional: `SMTP_*` e `MAIL_FROM` para o e-mail de recuperação de senha.
+4. Faça o deploy. A API aplica as migrações (`prisma migrate deploy`) ao iniciar e o health check é `/api/health`.
+   Se mudar `VITE_API_URL`, refaça o deploy do front (a variável entra no build).
+
+Observações:
+- **Nunca commite** a string do banco: ela fica só em `apps/api/.env` (ignorado pelo git) e no painel da Render.
+- No plano gratuito a API "dorme" após 15 min sem uso (o primeiro acesso demora) e o disco é efêmero:
+  os **comprovantes anexados são perdidos a cada deploy**. Para mantê-los, use um plano pago com disco
+  (bloco `disk` comentado no `render.yaml`).
+- Para criar os dados de demonstração no Neon: `npm run db:seed` com `DATABASE_URL` apontando para ele
+  (cria o usuário `demo@financeflow.dev`; não faça isso em produção real).

@@ -1,0 +1,62 @@
+# Blueprint da Render: https://render.com/docs/blueprint-spec
+# O banco fica no Neon (DATABASE_URL), então aqui só há a API (Docker) e o front (site estático).
+services:
+  # ---------- API (NestJS) ----------
+  - type: web
+    name: financeflow-api
+    runtime: docker
+    region: ohio            # mesma região do banco no Neon (us-east-2) para menor latência
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL     # string do Neon (pooler), cole no painel: não commite a senha
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: WEB_ORIGIN       # URL do front, ex.: https://financeflow-web.onrender.com
+        sync: false
+      # E-mail da recuperação de senha (opcional: sem SMTP o link só aparece no log da API)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+    # Comprovantes ficam em disco. No plano gratuito o disco é efêmero (some a cada deploy);
+    # para mantê-los, use um plano pago e descomente:
+    # disk:
+    #   name: uploads
+    #   mountPath: /data/uploads
+    #   sizeGB: 1
+
+  # ---------- Front (React, site estático) ----------
+  - type: web
+    name: financeflow-web
+    runtime: static
+    region: ohio
+    buildCommand: npm ci && npm run build -w @financeflow/shared && npm run build -w @financeflow/web
+    staticPublishPath: apps/web/dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL     # URL da API, ex.: https://financeflow-api.onrender.com (sem barra no fim)
+        sync: false
+    routes:
+      # rotas do React Router caem no index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

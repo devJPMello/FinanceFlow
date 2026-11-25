@@ -1,7 +1,11 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuth } from '@/lib/auth-store';
 
-export const api = axios.create({ baseURL: '/api' });
+/** Em dev e no Docker a API fica atrás do mesmo domínio (/api). Na Render o front é um site estático
+ *  separado: defina VITE_API_URL=https://sua-api.onrender.com no build. */
+const API_BASE = `${((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '')}/api`;
+
+export const api = axios.create({ baseURL: API_BASE });
 
 api.interceptors.request.use((config) => {
   const token = useAuth.getState().accessToken;
@@ -15,7 +19,7 @@ async function refreshToken(): Promise<string | null> {
   const { refreshToken, setSession, logout } = useAuth.getState();
   if (!refreshToken) return null;
   try {
-    const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+    const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
     setSession(data);
     return data.accessToken as string;
   } catch {
