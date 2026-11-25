@@ -16,7 +16,7 @@ export function ImportsPage() {
   const revert = useRevertImport();
   return (
     <>
-      <PageHeader title="Importar planilha" subtitle="Traga seu extrato em CSV, XLSX ou OFX — nós cuidamos do resto." />
+      <PageHeader title="Importar planilha" subtitle="Traga seu extrato em CSV, XLSX, XLS ou OFX — nós cuidamos do resto." />
       <ImportWizard />
       <Card>
         <SectionTitle>Histórico de importações</SectionTitle>

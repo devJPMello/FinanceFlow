@@ -1,5 +1,6 @@
 import { parse as parseCsvLib } from 'csv-parse/sync';
 import * as ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import { ImportMapping } from '@financeflow/shared';
 
 export interface RawTable {
@@ -78,6 +79,20 @@ export async function parseXlsx(buf: Buffer): Promise<RawTable> {
     if (any) rows.push(rec);
   });
   return { columns: columns.filter(Boolean), rows };
+}
+
+/** Planilhas legadas (.xls, BIFF). Usa a primeira aba; valores como aparecem formatados na planilha. */
+export function parseXls(buf: Buffer): RawTable {
+  const wb = XLSX.read(buf, { type: 'buffer', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if (!ws) return { columns: [], rows: [] };
+  const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: '', blankrows: false });
+  if (!aoa.length) return { columns: [], rows: [] };
+  const columns = (aoa[0] as unknown[]).map((c, i) => String(c ?? '').trim() || `Coluna ${i + 1}`);
+  const rows = aoa.slice(1)
+    .map((r) => Object.fromEntries(columns.map((c, i) => [c, String((r as unknown[])[i] ?? '').trim()])))
+    .filter((r) => Object.values(r).some(Boolean));
+  return { columns, rows };
 }
 
 export const OFX_COLUMNS = ['date', 'description', 'amount', 'fitid'];

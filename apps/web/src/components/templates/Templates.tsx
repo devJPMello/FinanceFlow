@@ -49,7 +49,7 @@ export function DashboardTemplate() {
 }
 
 const highlights = [
-  { icon: UploadCloud, title: 'Importe extratos em segundos', text: 'CSV, XLSX e OFX com mapeamento inteligente e detecção de duplicadas.' },
+  { icon: UploadCloud, title: 'Importe extratos em segundos', text: 'CSV, XLSX, XLS e OFX com mapeamento inteligente e detecção de duplicadas.' },
   { icon: PieChart, title: 'Veja para onde vai seu dinheiro', text: 'Gráficos por categoria, fluxo mensal e orçamentos com alertas.' },
   { icon: ShieldCheck, title: 'Seus dados, só seus', text: 'Cada conta é isolada e protegida por autenticação segura.' },
 ];

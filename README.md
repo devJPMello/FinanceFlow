@@ -1,6 +1,6 @@
 # FinanceFlow
 
-Organização de gastos com importação de planilhas (CSV, XLSX, OFX).
+Organização de gastos com importação de planilhas (CSV, XLSX, XLS, OFX).
 
 - **web**: React + Vite + TypeScript + Tailwind + TanStack Query, organizado em Atomic Design (`atoms → molecules → organisms → templates → pages`)
 - **api**: NestJS + Prisma + PostgreSQL, auth JWT (access + refresh com rotação), Swagger em `/docs`
@@ -22,7 +22,7 @@ npm run dev                                # api :3000  |  web :5173
 
 ## Importação
 
-1. **Arquivo** — CSV (separador e encoding detectados), XLSX ou OFX (até 5 MB).
+1. **Arquivo** — CSV (separador e encoding detectados), XLSX, XLS ou OFX (até 5 MB).
 2. **Mapeamento** — escolha conta, colunas de data/descrição/valor (ou crédito/débito), formato de data e separador decimal.
 3. **Revisão** — linhas novas, duplicadas (hash conta+data+valor+descrição, ou FITID no OFX) e com erro; categorias sugeridas por regras (`/category-rules`) e editáveis.
 4. **Confirmação** — cria as transações em uma única transação de banco; o histórico permite desfazer o lote.

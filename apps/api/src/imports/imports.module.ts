@@ -13,7 +13,7 @@ import { CurrentUser } from '../common/decorators';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.module';
 import { normalizeDescription, txHash } from '../transactions/transactions.module';
-import { normalizeRows, OFX_MAPPING, parseCsv, parseOfx, parseXlsx, RawTable } from './parsers';
+import { normalizeRows, OFX_MAPPING, parseCsv, parseOfx, parseXls, parseXlsx, RawTable } from './parsers';
 
 const mappingSchema = z.object({
   accountId: z.string().min(1),
@@ -32,7 +32,7 @@ type MappingInput = z.infer<typeof mappingSchema>;
 
 const rowPatchSchema = z.object({ categoryId: z.string().nullable().optional(), skip: z.boolean().optional() });
 
-const EXT_FORMAT: Record<string, 'CSV' | 'XLSX' | 'OFX'> = { '.csv': 'CSV', '.txt': 'CSV', '.xlsx': 'XLSX', '.ofx': 'OFX' };
+const EXT_FORMAT: Record<string, 'CSV' | 'XLSX' | 'OFX'> = { '.csv': 'CSV', '.txt': 'CSV', '.xlsx': 'XLSX', '.xls': 'XLSX', '.ofx': 'OFX' };
 
 @Injectable()
 export class ImportsService {
@@ -41,10 +41,10 @@ export class ImportsService {
   async upload(userId: string, file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Arquivo obrigatório');
     const format = EXT_FORMAT[extname(file.originalname).toLowerCase()];
-    if (!format) throw new BadRequestException('Formato não suportado. Use CSV, XLSX ou OFX.');
+    if (!format) throw new BadRequestException('Formato não suportado. Use CSV, XLSX, XLS ou OFX.');
     let table: RawTable;
     try {
-      table = format === 'CSV' ? parseCsv(file.buffer) : format === 'XLSX' ? await parseXlsx(file.buffer) : parseOfx(file.buffer);
+      table = format === 'CSV' ? parseCsv(file.buffer) : format === 'XLSX' ? (extname(file.originalname).toLowerCase() === '.xls' ? parseXls(file.buffer) : await parseXlsx(file.buffer)) : parseOfx(file.buffer);
     } catch {
       throw new BadRequestException('Não foi possível ler o arquivo');
     }

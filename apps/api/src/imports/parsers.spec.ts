@@ -32,3 +32,18 @@ describe('parsers', () => {
     expect(t.rows[0]).toEqual({ date: '2024-03-05', description: 'PADARIA', amount: '-50.00', fitid: 'A1' });
   });
 });
+
+describe('parseXls (planilha legada)', () => {
+  it('lê cabeçalho e linhas de um .xls BIFF8', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const XLSX = require('xlsx');
+    const ws = XLSX.utils.aoa_to_sheet([['Data', 'Descrição', 'Valor'], ['01/11/2026', 'Mercado', '-50,00'], ['', '', ''], ['02/11/2026', 'Salário', '1000,00']]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Extrato');
+    const buf: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'biff8' });
+    const t = require('./parsers').parseXls(buf);
+    expect(t.columns).toEqual(['Data', 'Descrição', 'Valor']);
+    expect(t.rows).toHaveLength(2);
+    expect(t.rows[1]).toEqual({ Data: '02/11/2026', Descrição: 'Salário', Valor: '1000,00' });
+  });
+});

@@ -14,6 +14,7 @@ export function FileDropzone({ onFile, loading }: Props) {
       'text/csv': ['.csv'],
       'text/plain': ['.txt'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
       'application/x-ofx': ['.ofx'],
       'application/octet-stream': ['.ofx'],
     },
@@ -40,10 +41,10 @@ export function FileDropzone({ onFile, loading }: Props) {
         <p className="text-base font-semibold">
           {loading ? 'Lendo arquivo…' : isDragActive ? 'Solte para importar' : 'Arraste sua planilha aqui'}
         </p>
-        {!loading && <p className="text-sm text-slate-500">ou <span className="font-medium text-brand-600">clique para escolher</span> — CSV, XLSX ou OFX até 5 MB</p>}
+        {!loading && <p className="text-sm text-slate-500">ou <span className="font-medium text-brand-600">clique para escolher</span> — CSV, XLSX, XLS ou OFX até 5 MB</p>}
       </div>
       {fileRejections.length > 0 && (
-        <p role="alert" className="mt-3 text-sm text-rose-600">Arquivo inválido. Use CSV, XLSX ou OFX de até 5 MB.</p>
+        <p role="alert" className="mt-3 text-sm text-rose-600">Arquivo inválido. Use CSV, XLSX, XLS ou OFX de até 5 MB.</p>
       )}
     </div>
   );
