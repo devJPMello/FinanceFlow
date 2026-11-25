@@ -106,3 +106,26 @@ test('recuperar senha mostra confirmação sem revelar se o e-mail existe', asyn
   await page.getByRole('button', { name: 'Enviar link' }).click();
   await expect(page.getByRole('status')).toContainText('Pedido enviado');
 });
+
+test('define um orçamento e mostra o alerta ao estourar o limite', async ({ page }) => {
+  await login(page);
+  // despesa de 100 em Lazer, depois limite de 50 => estourado
+  await page.getByRole('link', { name: 'Transações' }).click();
+  await page.getByRole('button', { name: 'Nova transação' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Valor (R$)').fill('100');
+  await dialog.getByLabel('Descrição').fill('Show');
+  await dialog.getByLabel('Categoria').selectOption({ label: 'Lazer' });
+  await dialog.getByRole('button', { name: 'Salvar' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole('link', { name: 'Orçamentos' }).click();
+  await page.getByLabel('Categoria').selectOption({ label: 'Lazer' });
+  await page.getByLabel('Limite (R$)').fill('50');
+  await page.getByRole('button', { name: 'Definir' }).click();
+  await expect(page.getByText('Orçamento definido')).toBeVisible();
+  await expect(page.getByText('Estourado')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Dashboard' }).click();
+  await expect(page.getByRole('alert')).toContainText('Orçamento estourado');
+});

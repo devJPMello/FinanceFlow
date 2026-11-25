@@ -114,8 +114,14 @@ export const useUpdateProfile = () => {
     onError: (e) => toast.error(errorMessage(e)),
   });
 };
-export const useChangePassword = () =>
-  useApiMutation((d: ChangePasswordInput) => api.post('/auth/change-password', d), [], 'Senha alterada');
+export const useChangePassword = () => {
+  const setSession = useAuth((s) => s.setSession);
+  return useMutation({
+    mutationFn: (d: ChangePasswordInput) => api.post('/auth/change-password', d).then((r) => r.data),
+    onSuccess: (session) => { setSession(session); toast.success('Senha alterada'); },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+};
 export const useDeleteMyAccount = () => useApiMutation((password: string) => api.delete('/auth/me', { data: { password } }));
 
 export const useSaveBudget = () => useApiMutation((d: BudgetInput) => api.post('/budgets', d), [['budgets']], 'Orçamento definido');

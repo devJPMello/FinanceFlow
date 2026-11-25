@@ -66,7 +66,7 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @HttpCode(204)
+  @HttpCode(200)
   changePassword(@CurrentUser() userId: string, @Body(new ZodPipe(changePasswordSchema)) dto: ChangePasswordInput) {
     return this.auth.changePassword(userId, dto);
   }

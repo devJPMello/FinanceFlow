@@ -74,7 +74,7 @@ export function RulesPage() {
                 <span className="text-slate-400">→</span>
                 <CategoryTag name={r.category.name} color={r.category.color} />
                 <span className="ml-auto text-xs text-slate-400">prioridade {r.priority}</span>
-                <IconButton label={`Excluir regra ${r.pattern}`} className="opacity-0 group-hover:opacity-100 focus:opacity-100" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4" /></IconButton>
+                <IconButton label={`Excluir regra ${r.pattern}`} className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4" /></IconButton>
               </li>
             ))}
           </ul>

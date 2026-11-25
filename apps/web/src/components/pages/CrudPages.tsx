@@ -54,7 +54,7 @@ export function AccountsPage() {
           {data.map((a) => {
             const T = TYPES[a.type];
             return (
-              <Card key={a.id} className="group flex items-center gap-4 transition-shadow hover:shadow-pop">
+              <Card key={a.id} className="group flex min-w-0 items-center gap-3 transition-shadow hover:shadow-pop sm:gap-4">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 text-white"><T.icon className="h-6 w-6" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{a.name}</p>
@@ -62,10 +62,10 @@ export function AccountsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-500">Saldo</p>
-                  <p className="text-lg font-bold"><Money value={a.balance} /></p>
+                  <p className="text-base font-bold sm:text-lg"><Money value={a.balance} /></p>
                 </div>
                 <IconButton
-                  label={`Excluir ${a.name}`} className="opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  label={`Excluir ${a.name}`} className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
                   onClick={async () => (await confirmDialog({ title: 'Excluir conta', message: `Excluir “${a.name}” e todas as suas transações? Não dá para desfazer.`, confirmLabel: 'Excluir' })) && del.mutate(a.id)}
                 ><Trash2 className="h-4 w-4" /></IconButton>
               </Card>
@@ -104,7 +104,7 @@ export function CategoriesPage() {
             <li key={c.id} className="group flex items-center justify-between py-2.5 text-sm">
               <span className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: `${c.color}22` }}><ColorDot color={c.color} className="!h-3 !w-3" /></span>{c.name}</span>
               <IconButton
-                label={`Excluir ${c.name}`} className="opacity-0 group-hover:opacity-100 focus:opacity-100"
+                label={`Excluir ${c.name}`} className="md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"
                 onClick={async () => (await confirmDialog({ title: 'Excluir categoria', message: `Excluir “${c.name}”? As transações ficam sem categoria.`, confirmLabel: 'Excluir' })) && del.mutate(c.id)}
               ><Trash2 className="h-4 w-4" /></IconButton>
             </li>
@@ -151,7 +151,7 @@ export function BudgetsPage() {
   const { data: categories = [] } = useCategories();
   const save = useSaveBudget();
   const del = useDeleteBudget();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<BudgetInput>({ resolver: zodResolver(budgetSchema) as never });
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<Omit<BudgetInput, 'month'>>({ resolver: zodResolver(budgetSchema.omit({ month: true })) as never });
   const total = data.reduce((s, b) => s + b.amount, 0);
   const spent = data.reduce((s, b) => s + b.spent, 0);
   return (

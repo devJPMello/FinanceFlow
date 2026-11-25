@@ -76,8 +76,9 @@ export class AuthService {
     const u = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!(await bcrypt.compare(dto.currentPassword, u.passwordHash))) throw new BadRequestException('Senha atual incorreta');
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 10) } });
-    // encerra as outras sessões
+    // encerra todas as sessões e devolve uma nova para quem trocou a senha continuar logado
     await this.prisma.refreshToken.deleteMany({ where: { userId } });
+    return this.issue(u);
   }
 
   async deleteAccount(userId: string, password: string) {

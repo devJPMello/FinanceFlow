@@ -72,7 +72,9 @@ describe('autenticação', () => {
     const me = await http().patch('/api/auth/me').set(u.h).send({ name: 'Novo Nome' }).expect(200);
     expect(me.body.name).toBe('Novo Nome');
     await http().post('/api/auth/change-password').set(u.h).send({ currentPassword: 'x', newPassword: 'novasenha123' }).expect(400);
-    await http().post('/api/auth/change-password').set(u.h).send({ currentPassword: 'senha12345', newPassword: 'novasenha123' }).expect(204);
+    await http().post('/api/auth/change-password').set(u.h).send({ currentPassword: 'senha12345', newPassword: 'novasenha123' }).expect(200);
+    // a sessão devolvida continua válida
+    expect(typeof (await http().get('/api/auth/me').set(u.h)).body.id).toBe('string');
     await http().delete('/api/auth/me').set(u.h).send({ password: 'errada' }).expect(400);
     await http().delete('/api/auth/me').set(u.h).send({ password: 'novasenha123' }).expect(204);
     await http().post('/api/auth/login').send({ email: 'perfil@e2e.test', password: 'novasenha123' }).expect(401);

@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CalendarClock, Pause, Pencil, Play, Plus, Repeat, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { recurringSchema, RecurringInput } from '@financeflow/shared';
 import { formatDate } from '@/lib/format';
@@ -26,7 +26,7 @@ function RecurringForm({ rule, onDone }: { rule: RecurringRule | null; onDone: (
   const { data: accounts = [] } = useAccounts();
   const { data: categories = [] } = useCategories();
   const save = useSaveRecurring();
-  const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<RecurringInput>({
+  const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<RecurringInput>({
     resolver: zodResolver(recurringSchema) as never,
     defaultValues: rule
       ? {
@@ -35,6 +35,10 @@ function RecurringForm({ rule, onDone }: { rule: RecurringRule | null; onDone: (
         }
       : { type: 'EXPENSE', frequency: 'MONTHLY', startDate: today(), accountId: accounts[0]?.id ?? '', categoryId: '', paymentMethod: '' as never, endDate: '' },
   });
+  useEffect(() => {
+    if (!rule && !getValues('accountId') && accounts[0]) setValue('accountId', accounts[0].id);
+  }, [accounts, rule, getValues, setValue]);
+
   const type = watch('type');
 
   return (

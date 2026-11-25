@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { transactionSchema, TransactionInput } from '@financeflow/shared';
 import { useAccounts, useCategories, useSaveTransaction, useTags } from '@/features/hooks';
@@ -22,7 +23,7 @@ export function TransactionForm({ transaction, onDone }: Props) {
   const save = useSaveTransaction();
   const { data: knownTags = [] } = useTags();
 
-  const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<TransactionInput>({
+  const { register, handleSubmit, watch, control, setValue, getValues, formState: { errors } } = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema) as never,
     defaultValues: transaction
       ? {
@@ -31,6 +32,11 @@ export function TransactionForm({ transaction, onDone }: Props) {
         }
       : { type: 'EXPENSE', date: new Date().toISOString().slice(0, 10), accountId: accounts[0]?.id ?? '', categoryId: '', paymentMethod: '' as never, tags: [], installments: 1 },
   });
+
+  // contas podem chegar depois de abrir o formulário: pré-seleciona a primeira
+  useEffect(() => {
+    if (!transaction && !getValues('accountId') && accounts[0]) setValue('accountId', accounts[0].id);
+  }, [accounts, transaction, getValues, setValue]);
 
   const type = watch('type');
   const onSubmit = handleSubmit((values) => save.mutate({ ...values, id: transaction?.id }, { onSuccess: onDone }));
