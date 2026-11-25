@@ -1,0 +1,53 @@
+{
+  "name": "@financeflow/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start:dev": "nest start --watch",
+    "start": "node dist/main",
+    "test": "jest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@financeflow/shared": "*",
+    "@nestjs/common": "^10.4.7",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.4.7",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/platform-express": "^10.4.7",
+    "@nestjs/swagger": "^8.0.7",
+    "@nestjs/throttler": "^6.2.1",
+    "@prisma/client": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "csv-parse": "^5.6.0",
+    "exceljs": "^4.4.0",
+    "helmet": "^8.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.8",
+    "@nestjs/testing": "^10.4.7",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.9.0",
+    "jest": "^29.7.0",
+    "prisma": "^6.0.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.2",
+    "typescript": "~5.6.3"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".spec.ts$",
+    "transform": { "^.+.ts$": "ts-jest" },
+    "testEnvironment": "node"
+  }
+}

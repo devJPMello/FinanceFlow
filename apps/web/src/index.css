@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { font-feature-settings: 'cv11', 'ss01'; }
+  body { @apply bg-[#f4f6fb] text-slate-900 antialiased dark:bg-[#0b0f1a] dark:text-slate-100; }
+  :focus-visible { @apply outline-none ring-2 ring-brand-500/70 ring-offset-2 ring-offset-white dark:ring-offset-[#0b0f1a]; }
+  ::selection { @apply bg-brand-200 text-brand-900; }
+  input[type='checkbox'] { @apply h-4 w-4 rounded border-slate-300 text-brand-600 accent-[#6a35f0]; }
+  input[type='color'] { @apply cursor-pointer rounded-lg; }
+}
+
+@layer components {
+  .surface { @apply rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-slate-800 dark:bg-slate-900/80; }
+  .skeleton { @apply relative overflow-hidden rounded-md bg-slate-200/70 dark:bg-slate-800; }
+  .skeleton::after {
+    content: ''; @apply absolute inset-0 -translate-x-full animate-[shimmer_1.4s_infinite];
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+  }
+  .dark .skeleton::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
