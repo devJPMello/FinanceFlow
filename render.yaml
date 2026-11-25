@@ -42,7 +42,6 @@ services:
   - type: web
     name: financeflow-web
     runtime: static
-    region: ohio
     buildCommand: npm ci && npm run build -w @financeflow/shared && npm run build -w @financeflow/web
     staticPublishPath: apps/web/dist
     autoDeploy: true
