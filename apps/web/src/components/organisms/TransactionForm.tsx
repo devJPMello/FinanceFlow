@@ -7,6 +7,7 @@ import { Button } from '../atoms/Button';
 import { Input, Select } from '../atoms/Input';
 import { Segmented } from '../atoms/Segmented';
 import { FormField } from '../molecules/FormField';
+import { PAYMENT_METHODS } from '../molecules/PaymentBadge';
 import { TagInput } from '../molecules/TagInput';
 import { AttachmentList } from './AttachmentList';
 
@@ -26,9 +27,9 @@ export function TransactionForm({ transaction, onDone }: Props) {
     defaultValues: transaction
       ? {
           accountId: transaction.accountId, categoryId: transaction.categoryId, type: transaction.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-          amount: transaction.amount, date: transaction.date.slice(0, 10), description: transaction.description, notes: transaction.notes ?? '', tags: transaction.tags ?? [],
+          amount: transaction.amount, date: transaction.date.slice(0, 10), description: transaction.description, notes: transaction.notes ?? '', paymentMethod: (transaction.paymentMethod ?? '') as never, tags: transaction.tags ?? [],
         }
-      : { type: 'EXPENSE', date: new Date().toISOString().slice(0, 10), accountId: accounts[0]?.id ?? '', categoryId: '', tags: [], installments: 1 },
+      : { type: 'EXPENSE', date: new Date().toISOString().slice(0, 10), accountId: accounts[0]?.id ?? '', categoryId: '', paymentMethod: '' as never, tags: [], installments: 1 },
   });
 
   const type = watch('type');
@@ -61,12 +62,20 @@ export function TransactionForm({ transaction, onDone }: Props) {
           </Select>
         </FormField>
       </div>
-      <FormField label="Categoria">
-        <Select {...register('categoryId')}>
-          <option value="">Sem categoria</option>
-          {categories.filter((c) => c.kind === type).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </Select>
-      </FormField>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormField label="Categoria">
+          <Select {...register('categoryId')}>
+            <option value="">Sem categoria</option>
+            {categories.filter((c) => c.kind === type).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+        </FormField>
+        <FormField label="Forma de pagamento">
+          <Select {...register('paymentMethod')}>
+            <option value="">Não informar</option>
+            {Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </Select>
+        </FormField>
+      </div>
       {!transaction && (
         <FormField label="Parcelas" error={errors.installments?.message}>
           <div className="flex items-center gap-3">

@@ -36,6 +36,10 @@ export const categorySchema = z.object({
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
 
+export const PaymentMethod = { PIX: 'PIX', DEBIT: 'DEBIT', CREDIT: 'CREDIT' } as const;
+export type PaymentMethodValue = (typeof PaymentMethod)[keyof typeof PaymentMethod];
+const paymentMethodField = z.preprocess((v) => (v === '' ? null : v), z.enum(['PIX', 'DEBIT', 'CREDIT']).nullable().optional());
+
 export const transactionSchema = z.object({
   accountId: z.string().min(1, 'Selecione a conta'),
   categoryId: z.string().nullable().optional(),
@@ -45,6 +49,7 @@ export const transactionSchema = z.object({
   description: z.string().min(1, 'Informe a descrição'),
   notes: z.string().optional(),
   tags: z.array(z.string().trim().min(1).max(30)).max(10).optional(),
+  paymentMethod: paymentMethodField,
   /** Só na criação: gera N parcelas mensais, cada uma com o valor informado. */
   installments: z.coerce.number().int().min(1).max(60).optional(),
 });
@@ -56,6 +61,7 @@ export const recurringSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
   amount: z.coerce.number().positive('Valor deve ser positivo'),
   description: z.string().min(1, 'Informe a descrição'),
+  paymentMethod: paymentMethodField,
   frequency: z.enum(['WEEKLY', 'MONTHLY', 'YEARLY']),
   startDate: z.string().min(1, 'Informe a data de início'),
   endDate: z.string().nullable().optional(),
@@ -96,3 +102,12 @@ export interface ImportMapping {
   decimal: ',' | '.';
   invertSign?: boolean;
 }
+
+export const forgotPasswordSchema = z.object({ email: z.string().email('E-mail inválido') });
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10),
+  newPassword: z.string().min(8, 'Mínimo de 8 caracteres'),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

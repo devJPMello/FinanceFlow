@@ -6,3 +6,6 @@ dist
 coverage
 uploads/
 dev.log
+storybook-static
+test-results
+playwright-report

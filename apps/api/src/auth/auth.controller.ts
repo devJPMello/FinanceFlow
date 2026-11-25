@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { changePasswordSchema, loginSchema, profileSchema, registerSchema, ChangePasswordInput, LoginInput, ProfileInput, RegisterInput } from '@financeflow/shared';
+import { Throttle } from '@nestjs/throttler';
+import { changePasswordSchema, forgotPasswordSchema, resetPasswordSchema, ForgotPasswordInput, ResetPasswordInput, loginSchema, profileSchema, registerSchema, ChangePasswordInput, LoginInput, ProfileInput, RegisterInput } from '@financeflow/shared';
 import { CurrentUser, Public } from '../common/decorators';
 import { ZodPipe } from '../common/zod.pipe';
 import { AuthService } from './auth.service';
@@ -22,6 +23,22 @@ export class AuthController {
   @HttpCode(200)
   login(@Body(new ZodPipe(loginSchema)) dto: LoginInput) {
     return this.auth.login(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('forgot-password')
+  @HttpCode(204)
+  forgot(@Body(new ZodPipe(forgotPasswordSchema)) dto: ForgotPasswordInput) {
+    return this.auth.forgotPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('reset-password')
+  @HttpCode(204)
+  reset(@Body(new ZodPipe(resetPasswordSchema)) dto: ResetPasswordInput) {
+    return this.auth.resetPassword(dto);
   }
 
   @Public()

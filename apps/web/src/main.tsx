@@ -6,7 +6,7 @@ import './index.css';
 import { AccountsPage, BudgetsPage, CategoriesPage, NotFoundPage } from './components/pages/CrudPages';
 import { DashboardPage } from './components/pages/DashboardPage';
 import { ImportsPage } from './components/pages/ImportsPage';
-import { LoginPage, RegisterPage } from './components/pages/AuthPages';
+import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './components/pages/AuthPages';
 import { RecurringPage } from './components/pages/RecurringPage';
 import { RulesPage } from './components/pages/RulesPage';
 import { SettingsPage } from './components/pages/SettingsPage';
@@ -29,6 +29,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route element={<DashboardTemplate />}>
             <Route index element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />

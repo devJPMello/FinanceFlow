@@ -35,7 +35,6 @@ describe('parsers', () => {
 
 describe('parseXls (planilha legada)', () => {
   it('lê cabeçalho e linhas de um .xls BIFF8', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const XLSX = require('xlsx');
     const ws = XLSX.utils.aoa_to_sheet([['Data', 'Descrição', 'Valor'], ['01/11/2026', 'Mercado', '-50,00'], ['', '', ''], ['02/11/2026', 'Salário', '1000,00']]);
     const wb = XLSX.utils.book_new();

@@ -2,9 +2,10 @@ import { BadRequestException, ConflictException, Injectable, UnauthorizedExcepti
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
-import { ChangePasswordInput, LoginInput, ProfileInput, RegisterInput } from '@financeflow/shared';
+import { ChangePasswordInput, ForgotPasswordInput, LoginInput, ProfileInput, RegisterInput, ResetPasswordInput } from '@financeflow/shared';
 import { removeUserFolder } from '../attachments/storage';
 import { PrismaService } from '../prisma/prisma.module';
+import { MailService } from './mail.service';
 
 const DEFAULT_CATEGORIES: [string, 'INCOME' | 'EXPENSE', string][] = [
   ['Alimentação', 'EXPENSE', '#f97316'],
@@ -24,7 +25,7 @@ const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService) {}
+  constructor(private prisma: PrismaService, private jwt: JwtService, private mail: MailService) {}
 
   async register(dto: RegisterInput) {
     const email = dto.email.toLowerCase();
@@ -84,6 +85,37 @@ export class AuthService {
     if (!password || !(await bcrypt.compare(password, u.passwordHash))) throw new BadRequestException('Senha incorreta');
     await this.prisma.user.delete({ where: { id: userId } });
     await removeUserFolder(userId);
+  }
+
+  /** Sempre responde igual, exista ou não o e-mail (evita descobrir quem tem conta). */
+  async forgotPassword(dto: ForgotPasswordInput) {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
+    if (!user) return;
+    const token = randomBytes(32).toString('hex');
+    await this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+    await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: sha(token), expiresAt: new Date(Date.now() + 3_600_000) } });
+    const link = `${process.env.WEB_ORIGIN ?? 'http://localhost:5173'}/reset-password?token=${token}`;
+    await this.mail.send(
+      user.email,
+      'Redefinição de senha — FinanceFlow',
+      `Olá, ${user.name}!
+
+Para criar uma nova senha, acesse (válido por 1 hora):
+${link}
+
+Se você não pediu isso, ignore este e-mail.`,
+      `<p>Olá, ${user.name.replace(/[<>&]/g, '')}!</p><p>Para criar uma nova senha, <a href="${link}">clique aqui</a> (válido por 1 hora).</p><p>Se você não pediu isso, ignore este e-mail.</p>`,
+    );
+  }
+
+  async resetPassword(dto: ResetPasswordInput) {
+    const row = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash: sha(dto.token) } });
+    if (!row || row.expiresAt < new Date()) throw new BadRequestException('Link inválido ou expirado. Peça um novo.');
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 10) } }),
+      this.prisma.passwordResetToken.deleteMany({ where: { userId: row.userId } }),
+      this.prisma.refreshToken.deleteMany({ where: { userId: row.userId } }),
+    ]);
   }
 
   private async issue(user: { id: string; name: string; email: string }) {

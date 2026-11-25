@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.env
+**/uploads
+.git
+dev.log
+apps/web/storybook-static
+apps/web/test-results
+apps/web/playwright-report
+coverage

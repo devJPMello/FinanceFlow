@@ -27,7 +27,7 @@ export function txHash(accountId: string, date: string, amount: number, descript
 
 interface ListQuery {
   from?: string; to?: string; accountId?: string; categoryId?: string;
-  type?: string; q?: string; tag?: string; page?: string; pageSize?: string;
+  type?: string; q?: string; tag?: string; paymentMethod?: string; page?: string; pageSize?: string;
 }
 
 @Injectable()
@@ -42,6 +42,7 @@ export class TransactionsService {
       ...(f.type && { type: f.type as any }),
       ...(f.q && { description: { contains: f.q, mode: 'insensitive' } }),
       ...(f.tag && { tags: { has: f.tag } }),
+      ...(f.paymentMethod && { paymentMethod: f.paymentMethod as any }),
       ...((f.from || f.to) && {
         date: { ...(f.from && { gte: new Date(f.from) }), ...(f.to && { lte: new Date(f.to) }) },
       }),
@@ -78,7 +79,7 @@ export class TransactionsService {
       const date = total === 1 ? dto.date : addMonthsIso(first, i);
       const description = total === 1 ? dto.description : `${dto.description} (${i + 1}/${total})`;
       return {
-        ...base, userId, description, categoryId: dto.categoryId || null, tags: dto.tags ?? [], date: new Date(date),
+        ...base, userId, description, categoryId: dto.categoryId || null, tags: dto.tags ?? [], paymentMethod: dto.paymentMethod ?? null, date: new Date(date),
         installmentNo: total === 1 ? null : i + 1, installmentTotal: total === 1 ? null : total,
         hash: txHash(dto.accountId, date, dto.amount, description),
       };
@@ -93,7 +94,7 @@ export class TransactionsService {
     const { installments: _ignored, ...base } = dto;
     const t = await this.prisma.transaction.update({
       where: { id },
-      data: { ...base, tags: dto.tags ?? [], categoryId: dto.categoryId || null, date: new Date(dto.date), hash: txHash(dto.accountId, dto.date, dto.amount, dto.description) },
+      data: { ...base, tags: dto.tags ?? [], paymentMethod: dto.paymentMethod ?? null, categoryId: dto.categoryId || null, date: new Date(dto.date), hash: txHash(dto.accountId, dto.date, dto.amount, dto.description) },
     });
     return { ...t, amount: Number(t.amount) };
   }
@@ -120,9 +121,9 @@ export class TransactionsService {
     });
     const esc = (v: string) => '"' + v.replace(/"/g, '""') + '"';
     const lines = rows.map((t) =>
-      [t.date.toISOString().slice(0, 10), esc(t.description), t.type, Number(t.amount).toFixed(2), esc(t.category?.name ?? ''), esc(t.account.name)].join(';'),
+      [t.date.toISOString().slice(0, 10), esc(t.description), t.type, Number(t.amount).toFixed(2), esc(t.category?.name ?? ''), esc(t.account.name), t.paymentMethod ?? ''].join(';'),
     );
-    return ['data;descricao;tipo;valor;categoria;conta', ...lines].join('\n');
+    return ['data;descricao;tipo;valor;categoria;conta;pagamento', ...lines].join('\n');
   }
 
   private async checkRefs(userId: string, dto: TransactionInput) {

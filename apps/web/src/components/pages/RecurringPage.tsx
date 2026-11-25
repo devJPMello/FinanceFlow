@@ -16,6 +16,7 @@ import { confirmDialog } from '../molecules/ConfirmHost';
 import { EmptyState } from '../molecules/EmptyState';
 import { FormField } from '../molecules/FormField';
 import { Modal } from '../molecules/Modal';
+import { PAYMENT_METHODS } from '../molecules/PaymentBadge';
 import { PageHeader } from '../molecules/PageHeader';
 
 const FREQ = { WEEKLY: 'Toda semana', MONTHLY: 'Todo mês', YEARLY: 'Todo ano' } as const;
@@ -29,10 +30,10 @@ function RecurringForm({ rule, onDone }: { rule: RecurringRule | null; onDone: (
     resolver: zodResolver(recurringSchema) as never,
     defaultValues: rule
       ? {
-          accountId: rule.accountId, categoryId: rule.categoryId ?? '', type: rule.type, amount: rule.amount, description: rule.description,
+          accountId: rule.accountId, categoryId: rule.categoryId ?? '', type: rule.type, amount: rule.amount, description: rule.description, paymentMethod: (rule.paymentMethod ?? '') as never,
           frequency: rule.frequency, startDate: rule.startDate.slice(0, 10), endDate: rule.endDate?.slice(0, 10) ?? '',
         }
-      : { type: 'EXPENSE', frequency: 'MONTHLY', startDate: today(), accountId: accounts[0]?.id ?? '', categoryId: '', endDate: '' },
+      : { type: 'EXPENSE', frequency: 'MONTHLY', startDate: today(), accountId: accounts[0]?.id ?? '', categoryId: '', paymentMethod: '' as never, endDate: '' },
   });
   const type = watch('type');
 
@@ -59,6 +60,9 @@ function RecurringForm({ rule, onDone }: { rule: RecurringRule | null; onDone: (
           <Select {...register('categoryId')}><option value="">Sem categoria</option>{categories.filter((c) => c.kind === type).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         </FormField>
       </div>
+      <FormField label="Forma de pagamento">
+        <Select {...register('paymentMethod')}><option value="">Não informar</option>{Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Select>
+      </FormField>
       <p className="text-xs text-slate-500">As transações são lançadas automaticamente a cada vencimento. Se a data de início já passou, os lançamentos atrasados são criados agora.</p>
       <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onDone}>Cancelar</Button><Button type="submit" loading={save.isPending}>Salvar</Button></div>
     </form>

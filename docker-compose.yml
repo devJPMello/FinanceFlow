@@ -1,3 +1,6 @@
+# Subir tudo (banco + API + web):   docker compose up --build
+#   App:      http://localhost:8080      Swagger: http://localhost:8080/docs
+# Só o banco para desenvolver:      npm run db:up
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: financeflow
-      POSTGRES_PASSWORD: financeflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-financeflow}
       POSTGRES_DB: financeflow
     ports: ["5434:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
@@ -14,5 +17,33 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    container_name: financeflow-api
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://financeflow:${POSTGRES_PASSWORD:-financeflow}@postgres:5432/financeflow?schema=public
+      # TROQUE em produção (ex.: openssl rand -hex 32)
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-FinanceFlow <no-reply@financeflow.local>}
+    volumes: [uploads:/data/uploads]
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    container_name: financeflow-web
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["${WEB_PORT:-8080}:80"]
+
 volumes:
   pgdata:
+  uploads:

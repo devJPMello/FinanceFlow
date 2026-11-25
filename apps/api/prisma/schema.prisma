@@ -74,6 +74,17 @@ model User {
   rules         CategoryRule[]
   recurring     RecurringRule[]
   attachments   Attachment[]
+  resetTokens   PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -128,6 +139,7 @@ model Transaction {
   externalId    String?
   importBatchId String?
   tags          String[]        @default([])
+  paymentMethod PaymentMethod?
   installmentNo    Int?
   installmentTotal Int?
   recurringId   String?
@@ -139,6 +151,7 @@ model Transaction {
   recurring     RecurringRule?  @relation(fields: [recurringId], references: [id], onDelete: SetNull)
   attachments   Attachment[]
   @@index([userId, date])
+  @@index([userId, paymentMethod])
   @@index([userId, accountId, date])
   @@index([userId, hash])
 }
@@ -189,6 +202,12 @@ model ImportRow {
   @@index([batchId])
 }
 
+enum PaymentMethod {
+  PIX
+  DEBIT
+  CREDIT
+}
+
 enum Frequency {
   WEEKLY
   MONTHLY
@@ -203,6 +222,7 @@ model RecurringRule {
   type           TransactionType
   amount         Decimal         @db.Decimal(14, 2)
   description    String
+  paymentMethod  PaymentMethod?
   frequency      Frequency
   startDate      DateTime        @db.Date
   endDate        DateTime?       @db.Date

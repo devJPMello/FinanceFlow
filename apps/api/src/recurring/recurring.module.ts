@@ -34,7 +34,7 @@ export class RecurringService {
     const r = await this.prisma.recurringRule.create({
       data: {
         userId, accountId: dto.accountId, categoryId: dto.categoryId || null, type: dto.type, amount: dto.amount,
-        description: dto.description, frequency: dto.frequency, startDate: start, endDate: dto.endDate ? new Date(dto.endDate) : null, nextDate: start,
+        description: dto.description, paymentMethod: dto.paymentMethod ?? null, frequency: dto.frequency, startDate: start, endDate: dto.endDate ? new Date(dto.endDate) : null, nextDate: start,
       },
     });
     await this.generateDue(userId);
@@ -50,7 +50,7 @@ export class RecurringService {
     const r = await this.prisma.recurringRule.update({
       where: { id },
       data: {
-        accountId: dto.accountId, categoryId: dto.categoryId || null, type: dto.type, amount: dto.amount, description: dto.description,
+        accountId: dto.accountId, categoryId: dto.categoryId || null, type: dto.type, amount: dto.amount, description: dto.description, paymentMethod: dto.paymentMethod ?? null,
         frequency: dto.frequency, startDate: start, endDate: dto.endDate ? new Date(dto.endDate) : null,
         // recalcula a próxima ocorrência a partir do que já foi gerado
         nextDate: occurrence(start, dto.frequency, cur.generatedCount),
@@ -93,7 +93,7 @@ export class RecurringService {
           await tx.transaction.create({
             data: {
               userId, accountId: rule.accountId, categoryId: rule.categoryId, type: rule.type, amount: rule.amount, date,
-              description: rule.description, recurringId: rule.id, hash: txHash(rule.accountId, iso, Number(rule.amount), rule.description),
+              description: rule.description, paymentMethod: rule.paymentMethod, recurringId: rule.id, hash: txHash(rule.accountId, iso, Number(rule.amount), rule.description),
             },
           });
           return true;

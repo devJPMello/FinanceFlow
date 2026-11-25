@@ -11,6 +11,7 @@ import { Card } from '../atoms/Typography';
 import { confirmDialog } from '../molecules/ConfirmHost';
 import { EmptyState } from '../molecules/EmptyState';
 import { Modal } from '../molecules/Modal';
+import { PAYMENT_METHODS } from '../molecules/PaymentBadge';
 import { MonthSwitcher } from '../molecules/MonthSwitcher';
 import { PageHeader } from '../molecules/PageHeader';
 import { TransactionForm } from '../organisms/TransactionForm';
@@ -42,7 +43,7 @@ export function TransactionsPage() {
   const items = data?.items ?? [];
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const page = filters.page ?? 1;
-  const hasFilters = !!(filters.q || filters.accountId || filters.categoryId || filters.type || filters.tag);
+  const hasFilters = !!(filters.q || filters.accountId || filters.categoryId || filters.type || filters.tag || filters.paymentMethod);
   const editingTx = editing ? items.find((t) => t.id === editing.id) ?? editing : null;
 
   const askDelete = async (t: Transaction) => {
@@ -69,7 +70,7 @@ export function TransactionsPage() {
             <Input type="search" aria-label="Buscar" placeholder="Buscar por descrição…" icon={<Search className="h-4 w-4" />} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Select aria-label="Conta" value={filters.accountId ?? ''} onChange={(e) => set({ accountId: e.target.value || undefined })}>
             <option value="">Todas as contas</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </Select>
@@ -78,6 +79,9 @@ export function TransactionsPage() {
           </Select>
           <Select aria-label="Tipo" value={filters.type ?? ''} onChange={(e) => set({ type: e.target.value || undefined })}>
             <option value="">Receitas e despesas</option><option value="INCOME">Só receitas</option><option value="EXPENSE">Só despesas</option>
+          </Select>
+          <Select aria-label="Forma de pagamento" value={filters.paymentMethod ?? ''} onChange={(e) => set({ paymentMethod: e.target.value || undefined })}>
+            <option value="">Todas as formas</option>{Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </Select>
           <Select aria-label="Tag" value={filters.tag ?? ''} onChange={(e) => set({ tag: e.target.value || undefined })}>
             <option value="">Todas as tags</option>{tags.map((t) => <option key={t} value={t}>#{t}</option>)}

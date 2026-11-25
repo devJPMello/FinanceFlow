@@ -21,7 +21,7 @@ export interface NormalizedRow {
 
 export function decodeText(buf: Buffer): string {
   const utf8 = buf.toString('utf8');
-  return utf8.includes('�') ? buf.toString('latin1') : utf8.replace(/^﻿/, '');
+  return utf8.includes(String.fromCharCode(0xfffd)) ? buf.toString('latin1') : utf8.charCodeAt(0) === 0xfeff ? utf8.slice(1) : utf8;
 }
 
 export function detectDelimiter(headerLine: string): string {
@@ -130,7 +130,7 @@ export function parseDate(value: string, format: ImportMapping['dateFormat']): s
   if (iso) {
     [y, m, d] = [+iso[1], +iso[2], +iso[3]];
   } else {
-    const parts = v.split(/[\/.\-\s]/).filter(Boolean).map(Number);
+    const parts = v.split(/[/.\-\s]/).filter(Boolean).map(Number);
     if (parts.length < 3 || parts.some(Number.isNaN)) return null;
     if (format === 'MM/DD/YYYY') [m, d, y] = parts;
     else if (format === 'YYYY-MM-DD') [y, m, d] = parts;

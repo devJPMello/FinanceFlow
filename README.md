@@ -34,3 +34,33 @@ Limitações do MVP: XLS legado (binário) não é lido, apenas XLSX; processame
 ```powershell
 npm test
 ```
+
+## Docker (tudo de uma vez)
+
+```bash
+docker compose up --build        # banco + API + web
+# App: http://localhost:8080   ·   Swagger: http://localhost:8080/docs
+```
+
+Variáveis úteis (arquivo `.env` na raiz ou ambiente): `WEB_PORT`, `POSTGRES_PASSWORD`,
+`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (**troque em produção**), `SMTP_*` e `MAIL_FROM`.
+As migrações rodam sozinhas ao subir a API; os comprovantes ficam no volume `uploads`.
+Para desenvolver só com o banco no Docker: `npm run db:up`.
+
+## Qualidade
+
+| Comando | O que faz |
+|---|---|
+| `npm run lint` | ESLint em todo o monorepo |
+| `npm test` | Testes unitários (API e web) |
+| `npm run test:e2e -w @financeflow/api` | E2E da API com banco real (cria o banco `financeflow_test`) |
+| `npm run test:e2e -w @financeflow/web` | Fluxos no navegador com Playwright (`E2E_CHANNEL=chrome` usa o Chrome instalado) |
+| `npm run storybook -w @financeflow/web` | Catálogo de atoms/molecules em http://localhost:6006 |
+
+O CI (`.github/workflows/ci.yml`) roda lint, build, testes, e2e e build das imagens Docker.
+
+## Recuperação de senha
+
+`POST /api/auth/forgot-password` envia um link de uso único (válido por 1 h) por e-mail.
+Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` e `MAIL_FROM`. Sem SMTP, o link é
+apenas escrito no log da API (útil em desenvolvimento).

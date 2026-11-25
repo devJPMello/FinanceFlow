@@ -9,7 +9,8 @@
     "test": "jest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "test:e2e": "jest --config test/jest-e2e.json"
   },
   "dependencies": {
     "@financeflow/shared": "*",
@@ -25,6 +26,7 @@
     "csv-parse": "^5.6.0",
     "exceljs": "^4.4.0",
     "helmet": "^8.0.0",
+    "nodemailer": "^10.6.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
@@ -38,8 +40,11 @@
     "@types/jest": "^29.5.14",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.9.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
     "jest": "^29.7.0",
     "prisma": "^6.0.0",
+    "supertest": "^7.3.2",
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.2",
     "typescript": "~5.6.3"

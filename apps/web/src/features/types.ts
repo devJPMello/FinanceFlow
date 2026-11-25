@@ -6,6 +6,7 @@ export interface Transaction {
   id: string; accountId: string; categoryId: string | null; type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   amount: number; date: string; description: string; notes?: string | null;
   category?: Category | null; account?: { id: string; name: string };
+  paymentMethod?: 'PIX' | 'DEBIT' | 'CREDIT' | null;
   tags?: string[]; installmentNo?: number | null; installmentTotal?: number | null; recurringId?: string | null;
   attachments?: Attachment[];
 }
@@ -15,6 +16,7 @@ export interface CategoryRule {
 }
 export interface RecurringRule {
   id: string; accountId: string; categoryId: string | null; type: 'INCOME' | 'EXPENSE'; amount: number; description: string;
+  paymentMethod?: 'PIX' | 'DEBIT' | 'CREDIT' | null;
   frequency: 'WEEKLY' | 'MONTHLY' | 'YEARLY'; startDate: string; endDate: string | null; nextDate: string; generatedCount: number; active: boolean;
   category?: Category | null; account?: { id: string; name: string };
 }
@@ -23,7 +25,7 @@ export interface TransactionList {
   items: Transaction[]; total: number; page: number; pageSize: number; totals: { income: number; expense: number };
 }
 export interface TxFilters {
-  from?: string; to?: string; accountId?: string; categoryId?: string; type?: string; q?: string; tag?: string; page?: number; pageSize?: number;
+  from?: string; to?: string; accountId?: string; categoryId?: string; type?: string; q?: string; tag?: string; paymentMethod?: string; page?: number; pageSize?: number;
 }
 export interface Budget {
   id: string; month: string; category: Category; amount: number; spent: number; remaining: number; percent: number;

@@ -5,6 +5,7 @@ import type { Transaction } from '@/features/types';
 import { IconButton } from '../atoms/Button';
 import { Money } from '../atoms/Money';
 import { CategoryTag } from '../molecules/CategoryTag';
+import { PaymentBadge } from '../molecules/PaymentBadge';
 
 interface Props {
   items: Transaction[];
@@ -27,6 +28,7 @@ function TypeIcon({ type }: { type: Transaction['type'] }) {
 /** Selos auxiliares: parcela, recorrência, anexos e tags. */
 function Extras({ t }: { t: Transaction }) {
   const chips = [
+    t.paymentMethod ? <PaymentBadge key="p" method={t.paymentMethod} /> : null,
     t.installmentTotal ? <span key="i" className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">{t.installmentNo}/{t.installmentTotal}</span> : null,
     t.recurringId ? <span key="r" title="Recorrente" className="text-slate-400"><Repeat className="h-3.5 w-3.5" /></span> : null,
     t.attachments?.length ? <span key="a" title={`${t.attachments.length} anexo(s)`} className="text-slate-400"><Paperclip className="h-3.5 w-3.5" /></span> : null,
